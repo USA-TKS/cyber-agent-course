@@ -7,7 +7,7 @@
 | もの | 開き方 |
 |---|---|
 | Colab のノートブック | [Colab で開く](https://colab.research.google.com/github/USA-TKS/cyber-agent-course/blob/main/image-speech/image_speech_ai_2026.ipynb)（上から3つのセルを実行すると、アプリが新しいタブで開く） |
-| スライド | [ブラウザで開く](https://usa-tks.github.io/cyber-agent-course/image-speech/slides.html)（← → で移動、右上の ☰ で一覧。8・15・26枚目では体験ページが動き、カメラとマイクを使う） |
+| スライド | [ブラウザで開く](https://usa-tks.github.io/cyber-agent-course/image-speech/slides.html)（← → で移動、右上の ☰ で一覧。9・16・27枚目では体験ページが動き、カメラとマイクを使う） |
 
 - ノートブックの API を使うページ（3・5・6・7）には、OpenAI の APIキーが要ります。キーはノートブックの 0-2 で入力し、ファイルには書きません。
 - 体験ページ（アプリの 1・2・4）は無料です。カメラとマイクを使います。

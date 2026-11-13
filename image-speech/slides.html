@@ -1152,6 +1152,31 @@ p code, li code, h4 code, h5 code, span code { padding: 0 6px; border-radius: 6p
     </section>
 
     <!-- ===================================================
+         次の単語の確率（前回の復習）
+         =================================================== -->
+    <section class="slide" aria-label="次の単語の確率（前回の復習）">
+        <div class="content">
+            <span class="eyebrow reveal" style="--d:0"><span class="num">01</span>画像認識のしくみ</span>
+            <h2 class="title reveal" style="--d:1">次の単語の確率<span class="try">前回の復習</span></h2>
+            <p class="lead reveal" style="--d:2">LLM は、次に来る単語の候補ごとに <strong>確率</strong> を計算して、<strong>いちばん高いもの</strong> を選ぶ</p>
+        </div>
+        <div class="tiles big" style="left:100px; top:340px;">
+            <span class="tile reveal" style="--d:3">東京</span><span class="tile reveal" style="--d:3.2">は</span><span class="tile reveal" style="--d:3.4">日本</span><span class="tile reveal" style="--d:3.6">の</span><span class="tile pred reveal" style="--d:7">首都</span>
+        </div>
+        <span class="reveal" style="--d:4; position:absolute; left:100px; top:515px; font-size:30px; font-weight:900; color:var(--accent-strong);">次の単語の候補</span>
+        <div class="prob big" style="left:100px; top:570px; width:1000px;">
+            <div class="pr on reveal" style="--d:4.5"><span class="w">首都</span><span class="b"><i style="width:98%; --d:5.5"></i></span><span class="v">98%</span></div>
+            <div class="pr reveal" style="--d:5"><span class="w">りんご</span><span class="b"><i style="width:3%; --d:6"></i></span><span class="v">1%</span></div>
+            <div class="pr reveal" style="--d:5.5"><span class="w">壁</span><span class="b"><i style="width:3%; --d:6.5"></i></span><span class="v">1%</span></div>
+        </div>
+        <span class="reveal" style="--d:6; position:absolute; left:1180px; top:745px; font-size:30px; color:var(--muted);">確率の数字は説明用の例</span>
+        <div class="grid" style="left:1180px; top:340px; width:640px;">
+            <div class="card reveal" style="--d:6; padding:30px 34px;"><div class="row"><span class="badge">1</span><h5 style="font-size:36px;">候補ごとに確率を計算</h5></div><p style="margin-top:10px; font-size:30px;">手がかりは、それまでの言葉</p></div>
+            <div class="card on reveal" style="--d:7; padding:30px 34px;"><div class="row"><span class="badge">2</span><h5 style="font-size:36px;">いちばん高いものを選ぶ</h5></div><p style="margin-top:10px; font-size:40px; font-weight:900; color:var(--ink);">→「首都」</p></div>
+        </div>
+    </section>
+
+    <!-- ===================================================
          画像を分類するには？
          =================================================== -->
     <section class="slide" aria-label="画像を分類するには？">
@@ -1235,12 +1260,12 @@ p code, li code, h4 code, h5 code, span code { padding: 0 6px; border-radius: 6p
     </section>
 
     <!-- ===================================================
-         画像分類を試そう
+         画像の分類を試そう
          =================================================== -->
-    <section class="slide" aria-label="画像分類を試そう">
+    <section class="slide" aria-label="画像の分類を試そう">
         <div class="content">
             <span class="eyebrow reveal" style="--d:0"><span class="num">01</span>画像認識のしくみ</span>
-            <h2 class="title reveal" style="--d:1">画像分類を試そう<span class="try">やってみよう</span></h2>
+            <h2 class="title reveal" style="--d:1">画像の分類を試そう<span class="try">やってみよう</span></h2>
             <p class="lead reveal" style="--d:2">アプリの <strong>1</strong>：物を映して、画像を変える</p>
         </div>
         <div class="steps4" style="left:100px; top:330px; width:1720px; gap:20px;">
@@ -1308,44 +1333,45 @@ p code, li code, h4 code, h5 code, span code { padding: 0 6px; border-radius: 6p
 
     <!-- ===================================================
          点から形を判定する
+         ① 指1本ずつ、手首からの長さを2つ比べる（体験2の「4 点の位置から判定する」の棒と同じ）
+         ② 4本の指の組み合わせで形を決める
          =================================================== -->
     <section class="slide" aria-label="点から形を判定する">
         <div class="content">
             <span class="eyebrow reveal" style="--d:0"><span class="num">01</span>画像認識のしくみ</span>
             <h2 class="title reveal" style="--d:1">点から形を判定する</h2>
-            <p class="lead reveal" style="--d:2">点の位置を比べる <strong>決まり</strong> で形が分かる。決まりを作るのは <strong>人</strong></p>
+            <p class="lead reveal" style="--d:2">点の位置を比べる <strong>決まり</strong> で形を決める。決まりを作るのは <strong>人</strong></p>
         </div>
+        <div class="reveal" style="--d:3; position:absolute; left:100px; top:330px; display:flex; align-items:center; gap:18px;"><span class="badge" style="width:54px; height:54px; font-size:28px;">1</span><h5 style="font-size:36px; font-weight:900;">指1本ずつ、手首からの長さを比べる</h5></div>
+        <h5 class="reveal" style="--d:3.5; position:absolute; left:370px; top:398px; width:300px; text-align:center; font-size:34px; font-weight:900;">伸ばした指</h5>
+        <h5 class="reveal" style="--d:4; position:absolute; left:710px; top:398px; width:300px; text-align:center; font-size:34px; font-weight:900;">曲げた指</h5>
         <svg class="wires" width="1920" height="1080" viewBox="0 0 1920 1080">
-            <g class="reveal" style="--d:3">
-                <line x1="360" y1="820" x2="360" y2="630" style="stroke:var(--accent); stroke-width:10; stroke-linecap:round;"/><line x1="360" y1="630" x2="360" y2="450" style="stroke:var(--accent); stroke-width:10; stroke-linecap:round;"/>
-                <circle cx="360" cy="820" r="18" fill="#fff" stroke="#1e1e1e" stroke-width="4"/><circle cx="360" cy="630" r="18" fill="#fff" stroke="#1e1e1e" stroke-width="4"/><circle cx="360" cy="450" r="21" fill="#ffe76a" stroke="#1e1e1e" stroke-width="4"/>
-                <path d="M430 820 V464" stroke="#d35400" stroke-width="7" fill="none"/><path d="M430 448 l-12 20 h24 z" fill="#d35400"/>
-                <path d="M490 820 V644" stroke="#999" stroke-width="7" fill="none"/><path d="M490 628 l-12 20 h24 z" fill="#999"/>
-            </g>
-            <g class="reveal" style="--d:5">
-                <line x1="720" y1="820" x2="720" y2="630" style="stroke:var(--accent); stroke-width:10; stroke-linecap:round;"/><line x1="720" y1="630" x2="790" y2="720" style="stroke:var(--accent); stroke-width:10; stroke-linecap:round;"/>
-                <circle cx="720" cy="820" r="18" fill="#fff" stroke="#1e1e1e" stroke-width="4"/><circle cx="720" cy="630" r="18" fill="#fff" stroke="#1e1e1e" stroke-width="4"/><circle cx="790" cy="720" r="21" fill="#ffe76a" stroke="#1e1e1e" stroke-width="4"/>
-                <path d="M860 820 V714" stroke="#d35400" stroke-width="7" fill="none"/><path d="M860 698 l-12 20 h24 z" fill="#d35400"/>
-                <path d="M920 820 V644" stroke="#999" stroke-width="7" fill="none"/><path d="M920 628 l-12 20 h24 z" fill="#999"/>
-            </g>
+            <g class="reveal" style="--d:3.5"><line x1="520" y1="715" x2="520" y2="605" style="stroke:var(--accent); stroke-width:10; stroke-linecap:round;"/><line x1="520" y1="605" x2="520" y2="495" style="stroke:var(--accent); stroke-width:10; stroke-linecap:round;"/><circle cx="520" cy="715" r="18" fill="#fff" stroke="#1e1e1e" stroke-width="4"/><circle cx="520" cy="605" r="18" fill="#fff" stroke="#1e1e1e" stroke-width="4"/><circle cx="520" cy="495" r="21" fill="#ffe76a" stroke="#1e1e1e" stroke-width="4"/></g>
+            <g class="reveal" style="--d:4"><line x1="860" y1="715" x2="860" y2="605" style="stroke:var(--accent); stroke-width:10; stroke-linecap:round;"/><line x1="860" y1="605" x2="922" y2="665" style="stroke:var(--accent); stroke-width:10; stroke-linecap:round;"/><circle cx="860" cy="715" r="18" fill="#fff" stroke="#1e1e1e" stroke-width="4"/><circle cx="860" cy="605" r="18" fill="#fff" stroke="#1e1e1e" stroke-width="4"/><circle cx="922" cy="665" r="21" fill="#ffe76a" stroke="#1e1e1e" stroke-width="4"/></g>
+            <path class="wire on draw" style="--d:7" pathLength="1" d="M1050 620 H1110"/><path class="head on" style="--d:7" d="M1120 620 l-14 -8 v16 z"/>
         </svg>
-        <h5 class="reveal" style="--d:3; position:absolute; left:290px; top:350px; font-size:38px; font-weight:900;">伸びている</h5>
-        <h5 class="reveal" style="--d:5; position:absolute; left:670px; top:350px; font-size:38px; font-weight:900;">たたんでいる</h5>
-        <span class="reveal" style="--d:3; position:absolute; left:100px; top:432px; width:230px; text-align:right; font-size:30px; color:var(--muted);">指先（8）</span>
-        <span class="reveal" style="--d:3; position:absolute; left:100px; top:612px; width:230px; text-align:right; font-size:30px; color:var(--muted);">第2関節（6）</span>
-        <span class="reveal" style="--d:3; position:absolute; left:100px; top:802px; width:230px; text-align:right; font-size:30px; color:var(--muted);">手首（0）</span>
-        <div class="reveal" style="--d:6; position:absolute; left:100px; top:870px; width:900px; display:grid; gap:6px; font-size:30px; font-weight:700;">
-            <span><i style="display:inline-block; width:44px; height:8px; background:#d35400; vertical-align:middle;"></i> 手首から指先　<i style="display:inline-block; width:44px; height:8px; background:#999; vertical-align:middle; margin-left:18px;"></i> 手首から第2関節</span>
-        </div>
-        <table class="tbl reveal" style="--d:7; left:1060px; top:340px; width:760px;">
-            <thead><tr><th style="width:180px;">形</th><th>伸びている指</th></tr></thead>
+        <span class="reveal" style="--d:3.5; position:absolute; left:230px; top:473px; width:250px; text-align:right; font-size:30px; color:var(--muted);">指先</span>
+        <span class="reveal" style="--d:3.5; position:absolute; left:230px; top:583px; width:250px; text-align:right; font-size:30px; color:var(--muted);">第2関節</span>
+        <span class="reveal" style="--d:3.5; position:absolute; left:230px; top:693px; width:250px; text-align:right; font-size:30px; color:var(--muted);">手首</span>
+        <span class="reveal" style="--d:5; position:absolute; left:100px; top:765px; width:250px; text-align:right; font-size:30px; font-weight:700; color:var(--accent-strong);">手首→指先</span>
+        <span class="reveal" style="--d:5; position:absolute; left:100px; top:825px; width:250px; text-align:right; font-size:30px; font-weight:700; color:#777;">手首→第2関節</span>
+        <i class="reveal" style="--d:5.5; position:absolute; left:370px; top:770px; width:280px; height:38px; border-radius:19px; background:var(--accent);"></i>
+        <i class="reveal" style="--d:5.5; position:absolute; left:370px; top:830px; width:140px; height:38px; border-radius:19px; background:#a9a9a4;"></i>
+        <i class="reveal" style="--d:6; position:absolute; left:710px; top:770px; width:101px; height:38px; border-radius:19px; background:var(--accent);"></i>
+        <i class="reveal" style="--d:6; position:absolute; left:710px; top:830px; width:140px; height:38px; border-radius:19px; background:#a9a9a4;"></i>
+        <div class="reveal" style="--d:6.5; position:absolute; left:370px; top:892px; width:300px; text-align:center;"><span class="fing on" style="height:68px; padding:0 26px; font-size:34px;">伸びている</span></div>
+        <div class="reveal" style="--d:6.5; position:absolute; left:710px; top:892px; width:300px; text-align:center;"><span class="fing" style="height:68px; padding:0 26px; font-size:34px;">たたんでいる</span></div>
+        <span class="reveal" style="--d:6.5; position:absolute; left:100px; top:904px; width:250px; text-align:right; font-size:30px; font-weight:700;">判定</span>
+        <div class="reveal" style="--d:7.5; position:absolute; left:1140px; top:330px; display:flex; align-items:center; gap:18px;"><span class="badge" style="width:54px; height:54px; font-size:28px;">2</span><h5 style="font-size:36px; font-weight:900;">4本の組み合わせで形を決める</h5></div>
+        <table class="tbl reveal" style="--d:8; left:1140px; top:420px; width:680px;">
+            <thead><tr><th style="width:170px;">形</th><th>伸びている指</th></tr></thead>
             <tbody>
                 <tr><td><b style="font-size:38px;">グー</b></td><td><span class="fing">人差し</span> <span class="fing">中</span> <span class="fing">薬</span> <span class="fing">小</span></td></tr>
                 <tr><td><b style="font-size:38px;">チョキ</b></td><td><span class="fing on">人差し</span> <span class="fing on">中</span> <span class="fing">薬</span> <span class="fing">小</span></td></tr>
                 <tr><td><b style="font-size:38px;">パー</b></td><td><span class="fing on">人差し</span> <span class="fing on">中</span> <span class="fing on">薬</span> <span class="fing on">小</span></td></tr>
             </tbody>
         </table>
-        <p class="reveal" style="--d:8; position:absolute; left:1060px; top:760px; width:760px; font-size:32px; color:var(--muted);">体：手首が肩より上 →「手を挙げている」</p>
+        <p class="reveal" style="--d:9; position:absolute; left:1140px; top:820px; width:680px; font-size:30px; color:var(--muted); line-height:1.6;">どれにも合わない形 →「？」<br>体：手首が肩より上 →「手を挙げている」</p>
     </section>
 
     <!-- ===================================================
@@ -2287,7 +2313,7 @@ document.addEventListener('click', (e) => {
 class InlineEditor {
     constructor() {
         this.isActive = false;
-        this.storeKey = 'image-speech-deck:edits:v4';
+        this.storeKey = 'image-speech-deck:edits:v5';
         this.toggle = document.getElementById('editToggle');
         this.hotzone = document.querySelector('.edit-hotzone');
         this.restore();
