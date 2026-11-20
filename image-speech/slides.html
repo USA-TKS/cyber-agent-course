@@ -1144,6 +1144,48 @@ p code, li code, h4 code, h5 code, span code { padding: 0 6px; border-radius: 6p
     </section>
 
     <!-- ===================================================
+         次の単語の確率（前回の復習）
+         =================================================== -->
+    <section class="slide" aria-label="次の単語の確率（前回の復習）">
+        <div class="content">
+            <span class="eyebrow reveal" style="--d:0"><span class="num">01</span>画像認識のしくみ</span>
+            <h2 class="title reveal" style="--d:1">次の単語の確率<span class="try">前回の復習</span></h2>
+            <p class="lead reveal" style="--d:2">LLM は、次に来る単語の候補ごとに <strong>確率</strong> を計算して、<strong>いちばん高いもの</strong> を選ぶ</p>
+        </div>
+        <div class="tiles big" style="left:100px; top:340px;">
+            <span class="tile reveal" style="--d:3">東京</span><span class="tile reveal" style="--d:3.2">は</span><span class="tile reveal" style="--d:3.4">日本</span><span class="tile reveal" style="--d:3.6">の</span><span class="tile pred reveal" style="--d:7">首都</span>
+        </div>
+        <span class="reveal" style="--d:4; position:absolute; left:100px; top:515px; font-size:30px; font-weight:900; color:var(--accent-strong);">次の単語の候補</span>
+        <div class="prob big" style="left:100px; top:570px; width:1000px;">
+            <div class="pr on reveal" style="--d:4.5"><span class="w">首都</span><span class="b"><i style="width:98%; --d:5.5"></i></span><span class="v">98%</span></div>
+            <div class="pr reveal" style="--d:5"><span class="w">りんご</span><span class="b"><i style="width:3%; --d:6"></i></span><span class="v">1%</span></div>
+            <div class="pr reveal" style="--d:5.5"><span class="w">壁</span><span class="b"><i style="width:3%; --d:6.5"></i></span><span class="v">1%</span></div>
+        </div>
+        <span class="reveal" style="--d:6; position:absolute; left:1180px; top:745px; font-size:30px; color:var(--muted);">確率の数字は説明用の例</span>
+        <div class="grid" style="left:1180px; top:340px; width:640px;">
+            <div class="card reveal" style="--d:6; padding:30px 34px;"><div class="row"><span class="badge">1</span><h5 style="font-size:36px;">候補ごとに確率を計算</h5></div><p style="margin-top:10px; font-size:30px;">手がかりは、それまでの言葉</p></div>
+            <div class="card on reveal" style="--d:7; padding:30px 34px;"><div class="row"><span class="badge">2</span><h5 style="font-size:36px;">いちばん高いものを選ぶ</h5></div><p style="margin-top:10px; font-size:40px; font-weight:900; color:var(--ink);">→「首都」</p></div>
+        </div>
+    </section>
+
+    <!-- ===================================================
+         画像を分類するには？（問いを出す）
+         =================================================== -->
+    <section class="slide" aria-label="画像を分類するには？">
+        <div class="content">
+            <span class="eyebrow reveal" style="--d:0"><span class="num">01</span>画像認識のしくみ</span>
+            <h2 class="title reveal" style="--d:1">画像を分類するには？</h2>
+            <p class="lead reveal" style="--d:2">写真に写っている物の <strong>名前</strong> を、コンピュータに答えさせたい</p>
+        </div>
+        <div class="grid" style="left:100px; top:350px; width:1720px; grid-template-columns: repeat(5, 1fr); gap:40px;">
+            <div class="reveal" style="--d:3.0; height:480px; border-radius:var(--radius); background:#fff; border:3px solid var(--ink); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:24px;"><div style="font-size:180px; line-height:1;">🍌</div><div style="font-size:84px; font-weight:900; line-height:1; color:var(--accent-strong);">？</div></div>
+            <div class="reveal" style="--d:3.4; height:480px; border-radius:var(--radius); background:#fff; border:3px solid var(--ink); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:24px;"><div style="font-size:180px; line-height:1;">🍎</div><div style="font-size:84px; font-weight:900; line-height:1; color:var(--accent-strong);">？</div></div>
+            <div class="reveal" style="--d:3.8; height:480px; border-radius:var(--radius); background:#fff; border:3px solid var(--ink); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:24px;"><div style="font-size:180px; line-height:1;">🖱️</div><div style="font-size:84px; font-weight:900; line-height:1; color:var(--accent-strong);">？</div></div>
+            <div class="reveal" style="--d:4.2; height:480px; border-radius:var(--radius); background:#fff; border:3px solid var(--ink); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:24px;"><div style="font-size:180px; line-height:1;">☕</div><div style="font-size:84px; font-weight:900; line-height:1; color:var(--accent-strong);">？</div></div>
+            <div class="reveal" style="--d:4.6; height:480px; border-radius:var(--radius); background:#fff; border:3px solid var(--ink); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:24px;"><div style="font-size:180px; line-height:1;">🐈</div><div style="font-size:84px; font-weight:900; line-height:1; color:var(--accent-strong);">？</div></div>
+        </div>
+    </section>
+    <!-- ===================================================
          画像とピクセル
          =================================================== -->
     <section class="slide" aria-label="画像とピクセル" data-step="16">
@@ -1178,12 +1220,12 @@ p code, li code, h4 code, h5 code, span code { padding: 0 6px; border-radius: 6p
     </section>
 
     <!-- ===================================================
-         画像を分類するには？
+         画像分類と確率
          =================================================== -->
-    <section class="slide" aria-label="画像を分類するには？">
+    <section class="slide" aria-label="画像分類と確率">
         <div class="content">
             <span class="eyebrow reveal" style="--d:0"><span class="num">01</span>画像認識のしくみ</span>
-            <h2 class="title reveal" style="--d:1">画像を分類するには？</h2>
+            <h2 class="title reveal" style="--d:1">画像分類と確率</h2>
             <p class="lead reveal" style="--d:2"><strong>1000種類</strong> のどれに近いかを、<strong>確率</strong> で答える</p>
         </div>
         <div class="dg full">
@@ -1212,31 +1254,6 @@ p code, li code, h4 code, h5 code, span code { padding: 0 6px; border-radius: 6p
         <div class="card hl reveal" style="--d:9; position:absolute; left:100px; top:760px; width:1720px; padding:36px 44px; display:flex; align-items:center; gap:48px;">
             <h4 style="font-size:40px;">前回の「次の単語」と同じ</h4>
             <div style="display:flex; align-items:center; gap:16px; font-size:36px; font-weight:700;"><span class="chip" style="font-size:34px;">東京は日本の</span>→<span class="chip on" style="font-size:34px;">首都 98%</span></div>
-        </div>
-    </section>
-
-    <!-- ===================================================
-         次の単語の確率（前回の復習）
-         =================================================== -->
-    <section class="slide" aria-label="次の単語の確率（前回の復習）">
-        <div class="content">
-            <span class="eyebrow reveal" style="--d:0"><span class="num">01</span>画像認識のしくみ</span>
-            <h2 class="title reveal" style="--d:1">次の単語の確率<span class="try">前回の復習</span></h2>
-            <p class="lead reveal" style="--d:2">LLM は、次に来る単語の候補ごとに <strong>確率</strong> を計算して、<strong>いちばん高いもの</strong> を選ぶ</p>
-        </div>
-        <div class="tiles big" style="left:100px; top:340px;">
-            <span class="tile reveal" style="--d:3">東京</span><span class="tile reveal" style="--d:3.2">は</span><span class="tile reveal" style="--d:3.4">日本</span><span class="tile reveal" style="--d:3.6">の</span><span class="tile pred reveal" style="--d:7">首都</span>
-        </div>
-        <span class="reveal" style="--d:4; position:absolute; left:100px; top:515px; font-size:30px; font-weight:900; color:var(--accent-strong);">次の単語の候補</span>
-        <div class="prob big" style="left:100px; top:570px; width:1000px;">
-            <div class="pr on reveal" style="--d:4.5"><span class="w">首都</span><span class="b"><i style="width:98%; --d:5.5"></i></span><span class="v">98%</span></div>
-            <div class="pr reveal" style="--d:5"><span class="w">りんご</span><span class="b"><i style="width:3%; --d:6"></i></span><span class="v">1%</span></div>
-            <div class="pr reveal" style="--d:5.5"><span class="w">壁</span><span class="b"><i style="width:3%; --d:6.5"></i></span><span class="v">1%</span></div>
-        </div>
-        <span class="reveal" style="--d:6; position:absolute; left:1180px; top:745px; font-size:30px; color:var(--muted);">確率の数字は説明用の例</span>
-        <div class="grid" style="left:1180px; top:340px; width:640px;">
-            <div class="card reveal" style="--d:6; padding:30px 34px;"><div class="row"><span class="badge">1</span><h5 style="font-size:36px;">候補ごとに確率を計算</h5></div><p style="margin-top:10px; font-size:30px;">手がかりは、それまでの言葉</p></div>
-            <div class="card on reveal" style="--d:7; padding:30px 34px;"><div class="row"><span class="badge">2</span><h5 style="font-size:36px;">いちばん高いものを選ぶ</h5></div><p style="margin-top:10px; font-size:40px; font-weight:900; color:var(--ink);">→「首都」</p></div>
         </div>
     </section>
 
@@ -2391,7 +2408,7 @@ document.addEventListener('click', (e) => {
 class InlineEditor {
     constructor() {
         this.isActive = false;
-        this.storeKey = 'image-speech-deck:edits:v7';
+        this.storeKey = 'image-speech-deck:edits:v8';
         this.toggle = document.getElementById('editToggle');
         this.hotzone = document.querySelector('.edit-hotzone');
         this.restore();
