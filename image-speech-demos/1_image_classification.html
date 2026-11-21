@@ -7,17 +7,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500&family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
-<script>
-/* スライドの中（iframe）で開かれたときは、見出しと説明を隠し、← → をスライドの移動に回す */
-if (window.parent !== window || location.search.includes('embed')) {
-    document.documentElement.classList.add('embed');
-    window.addEventListener('keydown', (e) => {
-        if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
-        e.preventDefault();
-        window.parent.postMessage(e.key === 'ArrowRight' ? 'demo:next' : 'demo:prev', '*');
-    }, true);
-}
-</script>
 <style>
 :root {
     --bg: #ffffff; --ink: #1e1e1e; --muted: #555555; --dim: #9a9a9a;
@@ -90,22 +79,6 @@ canvas#heat { pointer-events: none; }
 .look .meter b { font-family: var(--mono); color: var(--accent-strong); }
 .look .legend { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 13px; color: var(--muted); }
 .look .legend i { width: 90px; height: 12px; border-radius: 6px; background: linear-gradient(90deg, rgba(214, 40, 40, 0), rgba(214, 40, 40, .75)); border: 1px solid var(--line); }
-
-/* スライドの中に入れたとき */
-html.embed header, html.embed video#cam, html.embed .tips, html.embed .sub, html.embed .ctrl small, html.embed .pixel p, html.embed .status:not(.err) { display: none; }
-html.embed main { padding: 12px 14px; gap: 14px; }
-html.embed .viewwrap { width: min(100%, calc(100vh - 130px)); }
-html.embed .look .sub2 { display: none; }
-html.embed .bars { gap: 6px; }
-html.embed .look .meter { min-height: 0; margin-top: 6px; }
-html.embed #sizeNote { display: none; }
-html.embed main { grid-template-columns: 330px minmax(360px, 1fr) minmax(300px, 380px); }
-html.embed section.panel { padding: 10px 16px; }
-html.embed section.panel + section.panel { margin-top: 10px; }
-html.embed h2 { margin-bottom: 6px; }
-html.embed .ctrl { margin-top: 2px; }
-html.embed .btns button, html.embed .btns label.file { padding: 6px 12px; }
-html.embed .pixel { margin-top: 8px; min-height: 0; }
 </style>
 </head>
 <body>
@@ -113,7 +86,7 @@ html.embed .pixel { margin-top: 8px; min-height: 0; }
     <span class="tag">体験1</span>
     <h1>画像とピクセル・画像分類</h1>
     <span class="note">カメラの映像はこのパソコンの中だけで使われます（外には送りません）</span>
-    <a class="back" href="./">← メニュー</a>
+    <a class="back" href="./">← 戻る</a>
 </header>
 <main>
     <div>
@@ -425,7 +398,6 @@ const smctx = small.getContext('2d', { willReadFrequently: true });
 const video = $('cam');
 let classifier = null, hasImage = false, live = false, busy = false, queued = false, noiseSeed = 1, looking = false, resumeAfterLook = false;
 const heat = $('heat'), hctx = heat.getContext('2d');
-const EMBED = document.documentElement.classList.contains('embed');   // スライドの中では文を短くする
 
 // 元の写真：まだ何もないときは、色のついた見本を描いておく
 function drawSample() {
@@ -593,14 +565,13 @@ async function look() {
         const p = c ? c.score : 0;
         drops.push(Math.max(0, p0 - p));
         drawHeat(drops, n, k);
-        $('lookMeter').innerHTML = (EMBED ? `隠して <b>${k + 1}</b>/${n * n} 回目：` : `隠して分類 <b>${k + 1}</b> / ${n * n} 回目：「${nameOf(top)}」`)
+        $('lookMeter').innerHTML = `隠して分類 <b>${k + 1}</b> / ${n * n} 回目：「${nameOf(top)}」`
             + `<b>${(p0 * 100).toFixed(1)}%</b> → <b>${(p * 100).toFixed(1)}%</b>`;
         await new Promise((r) => requestAnimationFrame(r));
     }
     drawHeat(drops, n, -1);
     const mx = Math.max(...drops);
-    $('lookMeter').innerHTML = EMBED ? `${n * n} 回 分類：最大 <b>−${(mx * 100).toFixed(1)}</b> ポイント`
-        : `${n * n} 回 分類し直した：「${nameOf(top)}」が最大 <b>${(mx * 100).toFixed(1)}</b> ポイント下がった`
+    $('lookMeter').innerHTML = `${n * n} 回 分類し直した：「${nameOf(top)}」が最大 <b>${(mx * 100).toFixed(1)}</b> ポイント下がった`
           + (mx < 0.05 ? '（ほとんど変わらない）' : '');
     looking = false; $('btnLook').disabled = false; $('btnClear').disabled = false;
 }

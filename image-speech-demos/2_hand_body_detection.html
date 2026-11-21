@@ -7,17 +7,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500&family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
-<script>
-/* スライドの中（iframe）で開かれたときは、見出しと説明を隠し、← → をスライドの移動に回す */
-if (window.parent !== window || location.search.includes('embed')) {
-    document.documentElement.classList.add('embed');
-    window.addEventListener('keydown', (e) => {
-        if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
-        e.preventDefault();
-        window.parent.postMessage(e.key === 'ArrowRight' ? 'demo:next' : 'demo:prev', '*');
-    }, true);
-}
-</script>
 <style>
 :root {
     --bg: #ffffff; --ink: #1e1e1e; --muted: #555555; --dim: #9a9a9a;
@@ -94,17 +83,6 @@ canvas#view { display: block; width: min(100%, calc((100vh - 210px) * 4 / 3)); m
 .status.err { color: #c0392b; font-weight: 700; }
 .only-hand, .only-pose { }
 body.mode-pose .only-hand, body.mode-hand .only-pose { display: none; }
-
-/* スライドの中に入れたとき */
-html.embed header, html.embed .rule, html.embed .ctrl small, html.embed #ptNote, html.embed .status:not(.err), html.embed .nums, html.embed .flow { display: none; }
-html.embed main { padding: 12px 14px; gap: 14px; }
-html.embed canvas#view { width: min(100%, calc((100vh - 70px) * 4 / 3)); }
-html.embed section.panel { padding: 10px 16px; }
-html.embed section.panel + section.panel { margin-top: 10px; }
-html.embed h2 { margin-bottom: 6px; }
-html.embed .ctrl { margin-top: 4px; }
-html.embed .seg { margin-top: 8px; }
-html.embed .btns button, html.embed .btns label.file { padding: 6px 12px; }
 </style>
 </head>
 <body class="mode-hand">
@@ -112,7 +90,7 @@ html.embed .btns button, html.embed .btns label.file { padding: 6px 12px; }
     <span class="tag">体験2</span>
     <h1>手と体の検出</h1>
     <span class="note">カメラの映像はこのパソコンの中だけで使われます（外には送りません）</span>
-    <a class="back" href="./">← メニュー</a>
+    <a class="back" href="./">← 戻る</a>
 </header>
 <main>
     <div>

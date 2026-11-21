@@ -7,17 +7,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500&family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
-<script>
-/* スライドの中（iframe）で開かれたときは、見出しと説明を隠し、← → をスライドの移動に回す */
-if (window.parent !== window || location.search.includes('embed')) {
-    document.documentElement.classList.add('embed');
-    window.addEventListener('keydown', (e) => {
-        if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
-        e.preventDefault();
-        window.parent.postMessage(e.key === 'ArrowRight' ? 'demo:next' : 'demo:prev', '*');
-    }, true);
-}
-</script>
 <style>
 :root {
     --bg: #ffffff; --ink: #1e1e1e; --muted: #555555; --dim: #9a9a9a;
@@ -68,23 +57,6 @@ select { width: 100%; margin-top: 4px; padding: 6px 8px; font-family: var(--font
 #recSpec { height: clamp(90px, calc((100vh - 440px) * .42), 300px); }
 #col { height: clamp(90px, calc((100vh - 440px) * .38), 260px); }
 #recSpec { cursor: crosshair; }
-
-/* スライドの中に入れたとき（遠くからも読めるように、字を大きくして表示を絞る）
-   いまの波形・表示の設定・数字の札・説明は隠し、目盛りの字は描くときに大きくする */
-html.embed header, html.embed .tips, html.embed .status:not(.err), html.embed #waveBox, html.embed .ctrls, html.embed label.file, html.embed .cap .long, html.embed #colBox { display: none; }
-html.embed main { grid-template-columns: 1fr 1.2fr; padding: 12px 14px; gap: 14px; }
-html.embed section.panel { padding: 10px 14px; }
-html.embed h2 { margin-bottom: 6px; font-size: 22px; }
-html.embed h2 .n { width: 30px; height: 30px; font-size: 18px; }
-html.embed h2 .btns button { padding: 5px 14px; font-size: 19px; }
-html.embed .box { margin-top: 6px; padding: 4px 8px; }
-html.embed .box .cap { margin-bottom: 2px; font-size: 19px; }
-html.embed .ctrl .row, html.embed .ctrl .row b { font-size: 19px; }
-html.embed .rates { margin-top: 4px; gap: 5px; }
-html.embed .rates button { padding: 4px 10px; font-size: 19px; }
-html.embed #spec { height: 392px; }
-html.embed #zoom { height: 92px; }
-html.embed #recSpec { height: 172px; }
 </style>
 </head>
 <body>
@@ -92,7 +64,7 @@ html.embed #recSpec { height: 172px; }
     <span class="tag">体験3</span>
     <h1>音の波形とスペクトログラム</h1>
     <span class="note">マイクの音はこのパソコンの中だけで使われます（外には送りません）</span>
-    <a class="back" href="./">← メニュー</a>
+    <a class="back" href="./">← 戻る</a>
 </header>
 <main>
     <section class="panel">
@@ -153,8 +125,6 @@ function color(v) {   // v: 0〜1
     const i = Math.min(STOPS.length - 2, Math.floor(v)), t = v - i, a = STOPS[i], b = STOPS[i + 1];
     return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 }
-// スライドの中（EMBED）では、目盛りの字と線を大きく描く
-const EMBED = document.documentElement.classList.contains('embed');
 function fitCanvases() {   // 絵の細かさを、画面に出る大きさの2倍にそろえる（字や線が伸び縮みしないように）
     for (const id of ['wave', 'spec', 'zoom', 'recSpec', 'col']) {
         const c = $(id);
@@ -162,8 +132,8 @@ function fitCanvases() {   // 絵の細かさを、画面に出る大きさの2�
     }
 }
 fitCanvases();
-const AXIS = EMBED ? 110 : 84, AF = EMBED ? 44 : 28, K = EMBED ? 1.6 : 1;   // 左の目盛りの幅、目盛りの字の大きさ、線と点の太さ
-const rateLabel = (r, i) => r.toLocaleString() + (i === 0 && !EMBED ? '（元）' : '');   // 単位の Hz は上の数字に出る
+const AXIS = 84, AF = 28, K = 1;   // 左の目盛りの幅、目盛りの字の大きさ、線と点の太さ
+const rateLabel = (r, i) => r.toLocaleString() + (i === 0 ? '（元）' : '');   // 単位の Hz は上の数字に出る
 function drawAxis(ctx, h, maxHz, top = 0) {
     ctx.fillStyle = '#fff'; ctx.fillRect(0, top, AXIS, h);
     ctx.fillStyle = '#555'; ctx.font = `500 ${AF}px "JetBrains Mono", monospace`; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
@@ -311,7 +281,7 @@ function drawRecSpec(data, rate) {
 let rs = null, selSec = null;   // rs：録音した音の模様を描いたときの値
 const col = $('col'), cctx = col.getContext('2d');
 function showColumn(t) {
-    if (!rs || EMBED) return;
+    if (!rs) return;
     const { data, rate, N, hop, frames, mx, win, plotW } = rs;
     t = Math.max(0, Math.min(frames - 1, t)); selSec = t * hop / rate;
     // 上の模様に、選んだ列の印
