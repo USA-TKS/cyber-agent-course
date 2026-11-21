@@ -18,16 +18,6 @@ main { grid-template-columns: minmax(300px, 1fr) minmax(300px, 1fr) minmax(460px
 .sent p b { font-family: var(--mono); font-size: 20px; color: var(--accent-strong); }
 .sent p small { display: block; margin-top: 4px; font-size: 14px; color: var(--muted); }
 .answer.json { font-family: var(--mono); font-size: 15px; line-height: 1.6; }
-/* 料金の内訳の帯 */
-.split { margin-top: 12px; }
-.split .bar { display: flex; height: 26px; border-radius: 8px; overflow: hidden; border: 2px solid var(--ink); }
-.split .bar i { display: block; height: 100%; transform-origin: left; animation: grow .8s ease-out both; }
-.split .bar i.img { background: var(--accent); }
-.split .bar i.think { background: #ffb366; }
-.split .bar i.ans { background: var(--ink); }
-.split .lg { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 6px; font-size: 14px; }
-.split .lg span::before { content: ''; display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; background: var(--c); }
-@keyframes grow { from { transform: scaleX(0); } }
 /* JSON で受け取った物の表 */
 table.obj { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 16px; }
 table.obj th { text-align: left; padding: 6px 10px; background: var(--ink); color: #fff; font-size: 14px; }
@@ -42,7 +32,6 @@ table.obj i { display: inline-block; width: 12px; height: 12px; border-radius: 3
     <span class="tag api">体験4・API</span>
     <h1>LLMで画像を読み取る</h1>
     <span class="note">写真は OpenAI に送られます。顔・名前は写さない</span>
-    <span class="total" id="total">使った料金の合計 …</span>
     <a class="back" href="./">← 戻る</a>
 </header>
 <main>
@@ -76,7 +65,7 @@ table.obj i { display: inline-block; width: 12px; height: 12px; border-radius: 3
             <button id="btnAsk" class="primary big" disabled>読み取る</button>
             <button id="btnCompare" disabled>low と high を比べる</button>
         </div>
-        <p class="status" id="askStatus">先に写真を撮ってください。1回 約0.01〜0.1円</p>
+        <p class="status" id="askStatus">先に写真を撮ってください</p>
     </section>
 
     <section class="panel white">
@@ -106,7 +95,7 @@ function setImage(dataURL) {
     image = dataURL;
     $('photo').src = dataURL; $('photo').hidden = false; video.hidden = true;
     $('btnAsk').disabled = false; $('btnCompare').disabled = false;
-    $('askStatus').className = 'status'; $('askStatus').textContent = '答えの形・質問・detail を選んで「読み取る」。1回 約0.01〜0.1円';
+    $('askStatus').className = 'status'; $('askStatus').textContent = '答えの形・質問・detail を選んで「読み取る」';
 }
 $('btnShot').onclick = () => {
     if (!video.videoWidth) return;
@@ -127,7 +116,7 @@ $('file').onchange = async (e) => { const f = e.target.files[0]; if (f) setImage
     $('q').value = mode === 'json' ? Q_JSON : Q_TEXT;
 }));
 
-// AIに届いた画像に、32×32 ピクセルのマス目を重ねる（マスの数でトークンの数＝料金が決まる）。JSON の答えが来たら、物の枠も描く
+// AIに届いた画像に、32×32 ピクセルのマス目を重ねる（マスの数でトークンの数が決まる）。JSON の答えが来たら、物の枠も描く
 function drawSent(canvas, r, objects) {
     const im = new Image();
     im.onload = () => {
@@ -167,25 +156,13 @@ function newCard(r) {
     const el = document.createElement('div');
     el.className = 'card';
     const [c, rw] = r.patches;
-    el.innerHTML = `<div class="hd"><span class="pill ${r.detail === 'high' ? 'on' : ''}">${r.detail}</span>${r.mode === 'json' ? 'JSON で受け取る' : '文章で受け取る'}<span class="costslot" style="margin-left:auto;"></span></div>`
+    el.innerHTML = `<div class="hd"><span class="pill ${r.detail === 'high' ? 'on' : ''}">${r.detail}</span>${r.mode === 'json' ? 'JSON で受け取る' : '文章で受け取る'}</div>`
         + `<div class="sent"><canvas></canvas><p>AIに届いた画像：${r.sent[0]} × ${r.sent[1]} ピクセル<br>32×32 のマスに分けると <b>${c} × ${rw} ＝ ${(c * rw).toLocaleString()}</b> マス`
         + `<small>写真は ${r.chars.toLocaleString()} 文字の文字列にして、質問と一緒に1つの JSON で送った</small></p></div>`
         + `<div class="answer thinking ${r.mode === 'json' ? 'json' : ''}"></div><p class="pieces">OpenAI に送りました…</p>`;
     drawSent(el.querySelector('canvas'), r);
     el.appendChild(jsonBlock('送った中身（JSON）', r.request));
     return el;
-}
-function showSplit(el, r) {
-    const out = r.output_tokens, think = Math.min(r.reasoning_tokens, out), ans = out - think;
-    const yenThink = out ? r.yen_out * think / out : 0, yenAns = r.yen_out - yenThink, sum = r.yen_in + r.yen_out || 1;
-    const seg = (cls, v) => `<i class="${cls}" style="width:${(100 * v / sum).toFixed(1)}%;"></i>`;
-    const div = document.createElement('div');
-    div.className = 'split';
-    div.innerHTML = `<b>料金の内訳</b>（帯の長さ＝お金）<div class="bar">${seg('img', r.yen_in)}${seg('think', yenThink)}${seg('ans', yenAns)}</div>`
-        + `<div class="lg"><span style="--c:var(--accent)">送った写真と質問 ${r.input_tokens.toLocaleString()} トークン・${yen(r.yen_in)}</span>`
-        + `<span style="--c:#ffb366">AIが考えた ${think.toLocaleString()} トークン・${yen(yenThink)}</span>`
-        + `<span style="--c:var(--ink)">答え ${ans.toLocaleString()} トークン・${yen(yenAns)}</span></div>`;
-    el.querySelector('.pieces').after(div);
 }
 function showObjects(el, r) {
     const objs = r.data && Array.isArray(r.data.objects) ? r.data.objects : null;
@@ -199,7 +176,7 @@ function showObjects(el, r) {
             `<tr><td><i style="background:${COLORS[i % COLORS.length]}"></i>${esc(o.name)}</td><td>${esc(o.count)}</td><td class="pos">${esc((o.box || []).map((v) => (+v).toFixed(2)).join(', '))}</td></tr>`).join('')}</tbody></table>`
             + `<div class="why">枠は、AIが数字で返した位置を、このページのプログラムが描いたもの。Web のチャットでは文章で返ってくるが、API なら決めた形の JSON で受け取れるので、作品のプログラムでそのまま使える（数を数える・枠を描く・表にする）。AIの位置はずれることがある</div>`;
     }
-    el.querySelector('.split').after(box);
+    el.querySelector('.pieces').after(box);
 }
 
 async function askOne(d) {
@@ -215,9 +192,7 @@ async function askOne(d) {
         } else if (ev.type === 'done') {
             result = ev;
             ans.classList.remove('thinking');
-            el.querySelector('.costslot').innerHTML = costTag(ev.yen, '料金');
             el.querySelector('.pieces').innerHTML = `届いたかけら <b>${n}</b> 個 ・ 最初は <b>${(ev.first_ms / 1000 || first).toFixed(1)}</b> 秒後 ・ 全部で <b>${(ev.ms / 1000).toFixed(1)}</b> 秒`;
-            showSplit(el, ev);
             if (el._sent.mode === 'json') showObjects(el, ev);
             el.appendChild(jsonBlock('返ってきた中身（JSON）', ev.response));
         }
@@ -231,9 +206,8 @@ async function ask(list) {
     $('answers').innerHTML = '';
     $('askStatus').className = 'status'; $('askStatus').innerHTML = '<span class="thinking">OpenAI に送っています</span>';
     try {
-        let sum = 0;
-        for (const d of list) sum += (await askOne(d)).yen;
-        $('askStatus').innerHTML = costTag(sum, 'この1回') + '　答えが合っているか、写真と見比べよう';
+        for (const d of list) await askOne(d);
+        $('askStatus').textContent = '答えが合っているか、写真と見比べよう';
     } catch (e) { showError($('askStatus'), e); }
     $('btnAsk').disabled = $('btnCompare').disabled = false;
 }

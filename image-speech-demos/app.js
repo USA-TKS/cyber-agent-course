@@ -1,4 +1,4 @@
-// 体験ページ 4〜7 の共通の道具（中継のサーバへの頼み方・エラーの見立て・料金・写真と声の下ごしらえ・カメラ・録音）
+// 体験ページ 4〜6 の共通の道具（中継のサーバへの頼み方・エラーの見立て・写真と声の下ごしらえ・カメラ・録音）
 // 写真を縮める・声を整える・模様の図を描くのは、このブラウザの中でする。OpenAI へは中継のサーバ（worker/）を通して頼む。
 // APIキーは中継のサーバの中にだけあり、このページには来ない。管理者が管理用のページで Password を入れたときだけ、それを一緒に送る
 const $ = (id) => document.getElementById(id);
@@ -9,38 +9,9 @@ const API_BASE = ['localhost', '127.0.0.1'].includes(location.hostname) ? 'http:
 const MODEL_TEXT = 'gpt-6-luna';       // 写真を読む・会話する
 const MODEL_STT = 'gpt-transcribe';    // 文字起こし
 const MODEL_TTS = 'gpt-4o-mini-tts';   // 音声合成
-// 料金（2026年10月時点の公式の料金表。https://developers.openai.com/api/docs/pricing）
-const YEN = 150;                                              // 1ドル＝150円で計算
-const PRICE_IN = 0.10, PRICE_CACHED = 0.01, PRICE_OUT = 0.50; // gpt-6-luna（100万トークンあたりのドル。入力・前と同じ部分の入力・出力）
-const PRICE_STT = 0.0045;                                     // gpt-transcribe（1分あたりのドル）
-const PRICE_TTS_IN = 0.60, PRICE_TTS_OUT = 12.00;             // gpt-4o-mini-tts（100万トークンあたりのドル。文字の入力・声の出力）
 const SR = 16000;   // 文字起こしの声は、AIに送る形と同じ 1秒に 16,000 回・1チャンネル
 const STT_RATES = [16000, 8000, 4000, 3000, 2000];
 const TTS_VOICES = ['marin', 'cedar', 'alloy', 'ash', 'ballad', 'coral', 'echo', 'fable', 'nova', 'onyx', 'sage', 'shimmer', 'verse'];
-
-// ---------- 料金（円） ----------
-function yen(v) {   // 1円より小さい金額も読めるように、桁を変えて出す
-    if (v === null || v === undefined) return '料金は分かりませんでした';
-    return '約 ' + (v < 0.01 ? v.toFixed(4) : v < 1 ? v.toFixed(3) : v.toFixed(2)) + ' 円';
-}
-function costTag(v, what) { return `<span class="cost">${what ? what + ' ' : ''}${yen(v)}</span>`; }
-// このブラウザで使った料金の合計（ページの上に出す）
-const TOTAL_KEY = 'image-speech-demos:total-yen';
-let totalMem = 0;
-function totalYen() { try { return +localStorage.getItem(TOTAL_KEY) || 0; } catch (e) { return totalMem; } }
-function showTotal(total) { const el = $('total'); if (el && typeof total === 'number') el.textContent = '使った料金の合計 ' + yen(total); }
-function spend(v) {
-    totalMem = totalYen() + v;
-    try { localStorage.setItem(TOTAL_KEY, String(totalMem)); } catch (e) { /* 残せない環境では、このページの間だけ数える */ }
-    showTotal(totalMem);
-    return v;
-}
-const lunaYen = (u) => {
-    const cached = (u.input_tokens_details && u.input_tokens_details.cached_tokens) || 0;
-    return ((u.input_tokens - cached) * PRICE_IN + cached * PRICE_CACHED + u.output_tokens * PRICE_OUT) / 1e6 * YEN;
-};
-const sttYen = (seconds, times = 1) => seconds / 60 * PRICE_STT * YEN * times;
-const ttsYen = (u) => ((u.input_tokens || 0) * PRICE_TTS_IN + (u.output_tokens || 0) * PRICE_TTS_OUT) / 1e6 * YEN;
 
 // ---------- エラー：番号・何が起きたか・原因の見立て・直し方 ----------
 class AppError extends Error {
@@ -67,7 +38,7 @@ function explain(status, body) {
     }
     const detail = e.message ? `${e.type || ''} ${e.code || ''} ${e.message}`.trim().slice(0, 800) : undefined;
     const out = (title, cause = '', fix = '') => ({ code: status, title, cause, fix, detail });
-    if (status === 429 && e.code === 'insufficient_quota') return out('使える金額の上限に達しました', 'サーバのキーのプロジェクトの残高・上限を使い切った', '管理者に伝える');
+    if (status === 429 && e.code === 'insufficient_quota') return out('OpenAI の使用の上限に達しました', 'サーバのキーのプロジェクトの上限に達した', '管理者に伝える');
     const table = {
         400: ['送った中身を OpenAI が受け付けませんでした', '設定の値や、モデルとの組み合わせが合っていない', '「くわしく」を管理者に見せる'],
         401: ['サーバの APIキーが正しくありません', 'サーバに入れたキーの間違い・無効になったキー', '管理者に伝える'],
@@ -80,7 +51,7 @@ function explain(status, body) {
     return out(`思わぬエラー（${status}）`, '', '「くわしく」を管理者に見せる');
 }
 
-// ---------- 管理者の Password（管理用のページで入れる。このタブを閉じるまで覚え、体験 4〜7 でも使う） ----------
+// ---------- 管理者の Password（管理用のページで入れる。このタブを閉じるまで覚え、体験 4〜6 でも使う） ----------
 const PASS_KEY = 'image-speech-demos:admin-password';
 let passMem = '';
 function password() { try { return sessionStorage.getItem(PASS_KEY) || ''; } catch (e) { return passMem; } }
@@ -305,15 +276,9 @@ const OBJ_SCHEMA = {   // JSON で受け取るときの形（物の名前・数�
         required: ['name', 'count', 'box'], additionalProperties: false } } },
     required: ['objects'], additionalProperties: false,
 };
-const NEXT_PROMPT = 'あなたは、中学生・高校生の作品づくりを手伝う先輩です。'
-    + '作品を見せたときにグループの人から出た意見のメモ（使ってどう思ったか／欲しい機能／開発の仕方）を読み、'
-    + '次の1週間でやることの候補を3つ出してください。'
-    + '意見の中から、作品をよくするのに大事なものを選び、1つの候補は何をするかが分かる短い1文にしてください。'
-    + '否定はせず、中学生にも分かる日本語で、番号を付けて候補だけを3行で書いてください。';
 const VOICE_STATE = { x: null, wav: null, origText: null };   // いま録音してある声と、その文字起こし
 const elapsed = (t) => Math.round(performance.now() - t);
 const loadImage = (url) => new Promise((ok, ng) => { const im = new Image(); im.onload = () => ok(im); im.onerror = () => ng(new Error('画像が読めませんでした')); im.src = url; });
-const outputText = (resp) => (resp.output || []).flatMap((o) => o.content || []).filter((c) => c.type === 'output_text').map((c) => c.text).join('');
 function needVoice() {
     if (!VOICE_STATE.x) throw new Error('先に録音してください');
     return VOICE_STATE.x;
@@ -352,7 +317,7 @@ async function* origText(key) {
 async function* speak(args) {
     let r;
     try { r = await call('audio/speech', { json: { ...args, stream_format: 'sse' } }); }
-    catch (e) {   // sse で頼めないときは、ふつうに頼む（料金は分からない）
+    catch (e) {   // sse で頼めないときは、ふつうに頼む
         if (!e.info || e.info.code !== 400) throw e;
         return [await (await call('audio/speech', { json: args })).blob(), null];
     }
@@ -406,8 +371,6 @@ const TASKS = {
         if (mode === 'json') { try { data = JSON.parse(text); } catch (e) { data = null; } }
         yield { type: 'done', text, data, ms: elapsed(t), first_ms: first,
                 input_tokens: u.input_tokens, cached_tokens: cached, output_tokens: u.output_tokens, reasoning_tokens: reasoning,
-                yen_in: ((u.input_tokens - cached) * PRICE_IN + cached * PRICE_CACHED) / 1e6 * YEN,
-                yen_out: u.output_tokens * PRICE_OUT / 1e6 * YEN, yen: spend(lunaYen(u)),
                 response: { model: resp.model, status: resp.status, output_text: text, usage: u } };
     },
 
@@ -429,17 +392,17 @@ const TASKS = {
         yield { type: 'info', orig_spec: specPNG(x, SR), changed_spec: specPNG(changed, SR, target), changed_audio: await fileToDataURL(wav) };
         const [text0, calls] = yield* origText('A0');
         const text1 = yield* transcribeStream('A1', wav);
-        yield { type: 'result', orig_text: text0, changed_text: text1, calls: calls + 1, yen: spend(sttYen(x.length / SR, calls + 1)) };
+        yield { type: 'result', orig_text: text0, changed_text: text1, calls: calls + 1 };
     },
 
     // 実験B：ヒント（prompt・keywords・languages）を足す
     async *exp_b(d) {
-        const x = needVoice();
+        needVoice();
         const kw = (d.keywords || []).filter((k) => typeof k === 'string' && k.trim()).slice(0, 20);
         const langs = (d.languages || []).filter((l) => l === 'ja' || l === 'en');
         const [plain, calls] = yield* origText('B0');
         const hinted = yield* transcribeStream('B1', VOICE_STATE.wav, { prompt: String(d.prompt || '').slice(0, 300), keywords: kw, languages: langs });
-        yield { type: 'result', plain, hinted, calls: calls + 1, yen: spend(sttYen(x.length / SR, calls + 1)) };
+        yield { type: 'result', plain, hinted, calls: calls + 1 };
     },
 
     // 3つのAIのリレー：声 → 文字（gpt-transcribe）→ 返事（gpt-6-luna）→ 声（gpt-4o-mini-tts）。区切りごとに知らせる
@@ -448,9 +411,8 @@ const TASKS = {
         let t = performance.now();
         const heard = await (await call('audio/transcriptions', { form: sttForm(wav, { languages: ['ja'] }) })).json();
         const userText = String(heard.text || '').trim();
-        const stt = spend(sttYen(x.length / SR));
-        if (!userText) throw new Error(`声が聞き取れませんでした。もう一度話してください（文字起こしの料金 約 ${stt.toFixed(3)} 円）`);
-        yield { type: 'heard', text: userText, ms: elapsed(t), yen: stt, seconds: x.length / SR, kb: wav.size / 1024, chars: userText.length };
+        if (!userText) throw new Error('声が聞き取れませんでした。もう一度話してください');
+        yield { type: 'heard', text: userText, ms: elapsed(t), seconds: x.length / SR, kb: wav.size / 1024, chars: userText.length };
         const history = (d.history || []).filter((m) => m && (m.role === 'user' || m.role === 'assistant'))
             .map((m) => ({ role: m.role, content: String(m.content) })).slice(-20);
         const messages = [{ role: 'system', content: d.system || '' }, ...history, { role: 'user', content: userText }];
@@ -465,7 +427,7 @@ const TASKS = {
             } else if (ev.type === 'response.completed') usage = ev.response.usage;
         }
         const cached = (usage && usage.input_tokens_details && usage.input_tokens_details.cached_tokens) || 0;
-        yield { type: 'reply', text: reply, ms: elapsed(t), first_ms: first, yen: usage ? spend(lunaYen(usage)) : 0,
+        yield { type: 'reply', text: reply, ms: elapsed(t), first_ms: first,
                 input_tokens: usage ? usage.input_tokens : 0, output_tokens: usage ? usage.output_tokens : 0, cached_tokens: cached, chars: reply.length };
         const args = { model: MODEL_TTS, voice: TTS_VOICES.includes(d.voice) ? d.voice : 'marin', input: reply,
                        speed: Math.max(0.5, Math.min(2, +d.speed || 1)), response_format: 'mp3' };
@@ -473,20 +435,7 @@ const TASKS = {
         t = performance.now();
         yield { type: 'tts_start' };
         const [audio, ttsUsage] = yield* speak(args);
-        yield { type: 'audio', audio: await fileToDataURL(audio), ms: elapsed(t), kb: audio.size / 1024,
-                yen: ttsUsage ? spend(ttsYen(ttsUsage)) : null, tts_usage: ttsUsage };
-    },
-
-    // 意見メモから、次にやることの候補を3つ出してもらう
-    async next(d) {
-        const memo = `作品名：${String(d.title || '').slice(0, 100)}\n使ってどう思ったか：${String(d.feel || '').slice(0, 1000)}\n`
-            + `欲しい機能：${String(d.want || '').slice(0, 1000)}\n開発の仕方：${String(d.dev || '').slice(0, 1000)}`;
-        const resp = await (await call('responses', { json: { model: MODEL_TEXT, reasoning: { effort: 'low' },
-            input: [{ role: 'system', content: NEXT_PROMPT }, { role: 'user', content: memo }] } })).json();
-        const text = outputText(resp);
-        const lines = text.split('\n').map((l) => l.replace(/^\s*([0-9０-９]+[.)．、）]|[-・*])\s*/, '').trim()).filter(Boolean);
-        return { ideas: lines.length ? lines.slice(0, 3) : [text], yen: spend(lunaYen(resp.usage)),
-                 input_tokens: resp.usage.input_tokens, output_tokens: resp.usage.output_tokens };
+        yield { type: 'audio', audio: await fileToDataURL(audio), ms: elapsed(t), kb: audio.size / 1024, tts_usage: ttsUsage };
     },
 };
 // ページから頼む（1回で返す頼みごと／少しずつ返す頼みごと）
@@ -556,5 +505,3 @@ class Recorder {
     }
 }
 
-// ページを開いたとき：料金の合計
-showTotal(totalYen());

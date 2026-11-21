@@ -1,11 +1,11 @@
-// 体験ページ（image-speech-demos）の 4〜7 が OpenAI の API を使うための中継。
+// 体験ページ（image-speech-demos）の 4〜6 が OpenAI の API を使うための中継。
 // APIキー（OPENAI_API_KEY）と管理者の Password（ADMIN_PASSWORD）は、この Worker の秘密情報にだけ置く（ページには渡さない）。
 // 管理者は Password でいつでも使える。管理者以外は、使用開始時間から使用終了時間までの間だけ使える。
 // 使用開始時間・使用終了時間は KV（SETTINGS）に置き、管理用のページ（admin.html）から管理者が決める。
 // 通すのは、決めた3つの窓口と3つのモデルだけ。写真や声は記録しない（Workers Logs も使わない）。
 
 const ROUTES = {
-    'responses': { model: 'gpt-6-luna', kind: 'json' },           // 写真を読む・会話する・候補を出す
+    'responses': { model: 'gpt-6-luna', kind: 'json' },           // 写真を読む・会話する
     'audio/transcriptions': { model: 'gpt-transcribe', kind: 'form' },   // 文字起こし
     'audio/speech': { model: 'gpt-4o-mini-tts', kind: 'json' },   // 声にする
 };

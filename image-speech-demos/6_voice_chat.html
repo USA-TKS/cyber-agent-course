@@ -52,7 +52,7 @@ main { grid-template-columns: minmax(340px, 1fr) minmax(560px, 1.9fr); }
 .stack.sending { animation: send-out .9s ease-in-out; }
 @keyframes send-out { 40% { transform: translateX(14px); border-color: var(--accent); box-shadow: 0 0 0 6px rgba(245, 124, 0, .2); } }
 
-/* 1回ごとの時間とお金 */
+/* 1回ごとの時間 */
 .tl { display: grid; grid-template-columns: 60px 1fr 150px; gap: 10px; align-items: center; margin-top: 8px; font-size: 14px; }
 .tl .no { font-weight: 900; }
 .tl .bars { display: flex; height: 26px; border-radius: 6px; overflow: hidden; background: var(--panel); }
@@ -69,7 +69,6 @@ main { grid-template-columns: minmax(340px, 1fr) minmax(560px, 1.9fr); }
     <span class="tag api">体験6・API</span>
     <h1>声で話すChatbot</h1>
     <span class="note">声は OpenAI に送られます。名前や住所は話さない</span>
-    <span class="total" id="total">使った料金の合計 …</span>
     <a class="back" href="./">← 戻る</a>
 </header>
 <main>
@@ -112,7 +111,7 @@ main { grid-template-columns: minmax(340px, 1fr) minmax(560px, 1.9fr); }
         </div>
     </section>
     <section class="panel">
-        <h2><span class="n">4</span>1回ごとの時間とお金</h2>
+        <h2><span class="n">4</span>1回ごとの時間</h2>
         <div id="timeline"><p class="status" style="margin:0;">話しかけると、1回ごとにここに並ぶ（帯の長さ＝かかった時間）</p></div>
         <div class="legend"><span style="--c:#9a9a9a">文字にする</span><span style="--c:#ffb366">返事の最初の字まで</span><span style="--c:var(--accent)">返事の残り</span><span style="--c:var(--ink)">声にする</span></div>
     </section>
@@ -214,10 +213,10 @@ function showStack(messages, fresh, sending = true) {
 function showSent(req, r) {
     const n = req.input.length;
     $('sentSum').innerHTML = `gpt-6-luna に送ったメッセージ <b>${n}</b> 個（設定 1 ・ これまでの会話 <b>${n - 2}</b> ・ いまの言葉 1）。話すたびに増えて、毎回ぜんぶ送る`
-        + (r ? `<br>入力 <b>${r.input_tokens.toLocaleString()}</b> トークン（前と同じ部分 <b>${r.cached_tokens.toLocaleString()}</b> は安い）・ 出力 <b>${r.output_tokens.toLocaleString()}</b> トークン　${costTag(r.yen, '料金')}` : '');
+        + (r ? `<br>入力 <b>${r.input_tokens.toLocaleString()}</b> トークン・ 出力 <b>${r.output_tokens.toLocaleString()}</b> トークン` : '');
     $('sentJson').textContent = JSON.stringify(req, null, 2);
 }
-// 1回ごとの時間とお金（帯の長さ＝時間。いちばん長い回を 100% にそろえる）
+// 1回ごとの時間（帯の長さ＝時間。いちばん長い回を 100% にそろえる）
 function showTimeline() {
     const max = Math.max(...turns.map((t) => t.stt + t.llm + t.tts), 1);
     $('timeline').innerHTML = turns.map((t, i) => {
@@ -225,7 +224,7 @@ function showTimeline() {
         return `<div class="tl"><span class="no">${i + 1}回目</span><div class="bars"><i class="c-stt" style="width:${w(t.stt)}" title="文字にする ${sec(t.stt)}"></i>`
             + `<i class="c-first" style="width:${w(t.first)}" title="返事の最初の字まで ${sec(t.first)}"></i><i class="c-llm" style="width:${w(t.llm - t.first)}"></i>`
             + `<i class="c-tts" style="width:${w(t.tts)}" title="声にする ${sec(t.tts)}"></i></div>`
-            + `<span class="sum">${sec(t.stt + t.llm + t.tts)}・${t.known ? yen(t.yen) : yen(t.yen) + '＋声'}</span></div>`;
+            + `<span class="sum">${sec(t.stt + t.llm + t.tts)}</span></div>`;
     }).join('');
 }
 $('btnReset').onclick = () => {
@@ -255,14 +254,13 @@ async function send() {
     const recSec = r.t0 ? (Date.now() - r.t0) / 1000 : 0;
     $('status').className = 'status'; $('status').innerHTML = '<span class="thinking">3つのAIに順に頼んでいます</span>';
     relay('rec', 'done', `${recSec.toFixed(1)} 秒`); relay('stt', 'run'); fly('rec', 'stt', `声 ${recSec.toFixed(1)}秒`);
-    let userText = '', botEl = null, req = null, cost = 0, known = true, chars = 0;
-    const turn = { stt: 0, first: 0, llm: 0, tts: 0, yen: 0, known: true };
+    let userText = '', botEl = null, req = null, chars = 0;
+    const turn = { stt: 0, first: 0, llm: 0, tts: 0 };
     try {
         await apiStream('chat', { audio, history, system: $('sys').value, voice: $('voice').value, speed: +$('speed').value, instructions: $('inst').value }, (ev) => {
-            if (typeof ev.yen === 'number') cost += ev.yen;
             if (ev.type === 'heard') {
                 userText = ev.text; bubble('user', ev.text); turn.stt = ev.ms;
-                relay('stt', 'done', `${sec(ev.ms)}\n${yen(ev.yen)}`); relay('llm', 'run'); fly('stt', 'llm', `文字 ${ev.chars}字`);
+                relay('stt', 'done', sec(ev.ms)); relay('llm', 'run'); fly('stt', 'llm', `文字 ${ev.chars}字`);
             } else if (ev.type === 'sent') {
                 req = ev.request; showStack(req.input, history.length ? 1 : req.input.length); showSent(req);
             } else if (ev.type === 'delta') {   // 返事は、できたところから少しずつ届く
@@ -272,7 +270,7 @@ async function send() {
             } else if (ev.type === 'reply') {
                 if (!botEl) botEl = bubble('bot', ev.text);
                 turn.llm = ev.ms; turn.first = ev.first_ms || 0;
-                relay('llm', 'done', sec(ev.ms) + (ev.first_ms !== null ? `\n最初の字 ${sec(ev.first_ms)}` : '') + '\n' + yen(ev.yen));
+                relay('llm', 'done', sec(ev.ms) + (ev.first_ms !== null ? `\n最初の字 ${sec(ev.first_ms)}` : ''));
                 relay('tts', 'run', ''); fly('llm', 'tts', `返事 ${ev.chars}字`);
                 history.push({ role: 'user', content: userText }, { role: 'assistant', content: ev.text });
                 showHist(); if (req) { showSent(req, ev); showStack(req.input.concat([{ role: 'assistant', content: ev.text }]), 1, false); }
@@ -280,9 +278,8 @@ async function send() {
                 const c = document.createElement('i'); if ($('chunks').children.length < 60) $('chunks').appendChild(c);
                 relay('tts', 'run', `かけら ${ev.n} 個\n${ev.kb.toFixed(0)} KB`);
             } else if (ev.type === 'audio') {
-                if (ev.yen === null) known = false;
-                turn.tts = ev.ms; turn.yen = cost; turn.known = known;
-                relay('tts', 'done', `${sec(ev.ms)}\n${ev.kb.toFixed(0)} KB\n${yen(ev.yen)}`); fly('tts', 'play', `mp3 ${ev.kb.toFixed(0)}KB`);
+                turn.tts = ev.ms;
+                relay('tts', 'done', `${sec(ev.ms)}\n${ev.kb.toFixed(0)} KB`); fly('tts', 'play', `mp3 ${ev.kb.toFixed(0)}KB`);
                 const a = new Audio(ev.audio);
                 const again = document.createElement('button');
                 again.className = 'again'; again.textContent = '▶ もう一度聞く';
@@ -292,7 +289,7 @@ async function send() {
             }
         });
         turns.push(turn); showTimeline();
-        $('status').innerHTML = costTag(cost, 'この1回') + (known ? '' : '（声にする分は入っていない）') + '　続けて話すときは、もう一度「話す」';
+        $('status').textContent = '続けて話すときは、もう一度「話す」';
     } catch (e) { showError($('status'), e); document.querySelectorAll('#relay .st.run').forEach((el) => (el.className = 'st')); }
     $('btnTalk').disabled = false;
 }

@@ -33,7 +33,6 @@ main { grid-template-columns: minmax(400px, 1fr) minmax(560px, 1.7fr); }
     <span class="tag api">体験5・API</span>
     <h1>文字起こしの実験</h1>
     <span class="note">変える条件は1つずつ。声は OpenAI に送られます。名前や住所は話さない</span>
-    <span class="total" id="total">使った料金の合計 …</span>
     <a class="back" href="./">← 戻る</a>
 </header>
 <main>
@@ -173,7 +172,7 @@ $('btnA').onclick = async () => {
             if (ev.type === 'result') {
                 if (!loggedOrig) { addLog('元の声', ev.orig_text); loggedOrig = true; }
                 addLog(cond, ev.changed_text);
-                $('aStatus').innerHTML = costTag(ev.yen, 'この1回') + `（文字起こし ${ev.calls} 回分）`;
+                $('aStatus').textContent = '';
             }
         });
     } catch (e) { showError($('aStatus'), e); }
@@ -190,7 +189,7 @@ $('btnB').onclick = async () => {
             else {
                 if (!loggedOrig) { addLog('元の声', ev.plain); loggedOrig = true; }
                 addLog('ヒント：' + [prompt, keywords.join(', '), lang].filter(Boolean).join('／'), ev.hinted);
-                $('bStatus').innerHTML = costTag(ev.yen, 'この1回') + `（文字起こし ${ev.calls} 回分）`;
+                $('bStatus').textContent = '';
             }
         });
     } catch (e) { showError($('bStatus'), e); }

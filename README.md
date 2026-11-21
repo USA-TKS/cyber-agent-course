@@ -24,7 +24,6 @@
 | 体験4 LLMで画像を読み取る | [ブラウザで開く](https://usa-tks.github.io/cyber-agent-course/image-speech-demos/4_read_image.html) |
 | 体験5 文字起こしの実験 | [ブラウザで開く](https://usa-tks.github.io/cyber-agent-course/image-speech-demos/5_transcription.html) |
 | 体験6 声で話すChatbot | [ブラウザで開く](https://usa-tks.github.io/cyber-agent-course/image-speech-demos/6_voice_chat.html) |
-| 体験7 意見メモ | [ブラウザで開く](https://usa-tks.github.io/cyber-agent-course/image-speech-demos/7_feedback_memo.html) |
 | API の設定（管理者） | [ブラウザで開く](https://usa-tks.github.io/cyber-agent-course/image-speech-demos/admin.html)（管理者の Password で入り、使用開始時間と使用終了時間を決める） |
 
-- 体験4〜6 と、体験7 の「AIに聞く」は OpenAI の API を使います。使えるのは、管理者が決めた使用開始時間から使用終了時間までです。
+- 体験4〜6 は OpenAI の API を使います。使えるのは、管理者が決めた使用開始時間から使用終了時間までです。
