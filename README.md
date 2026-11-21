@@ -25,5 +25,6 @@
 | 体験5 文字起こしの実験 | [ブラウザで開く](https://usa-tks.github.io/cyber-agent-course/image-speech-demos/5_transcription.html) |
 | 体験6 声で話すChatbot | [ブラウザで開く](https://usa-tks.github.io/cyber-agent-course/image-speech-demos/6_voice_chat.html) |
 | 体験7 意見メモ | [ブラウザで開く](https://usa-tks.github.io/cyber-agent-course/image-speech-demos/7_feedback_memo.html) |
+| API の設定（講師） | [ブラウザで開く](https://usa-tks.github.io/cyber-agent-course/image-speech-demos/admin.html)（講師の合言葉で入り、講師以外が使う合言葉・時間・許可を決める） |
 
 - 体験4〜6 と、体験7 の「AIに聞く」は OpenAI の API を使います。ページの上の「合言葉」に、講師から聞いた合言葉を入れます。

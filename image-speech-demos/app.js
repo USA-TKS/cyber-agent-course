@@ -50,6 +50,8 @@ const NOT_REACHED = new AppError({ code: null, title: 'サーバに届きませ�
 // 中継のサーバが止めたとき
 const PROXY_HINT = {
     passcode: ['合言葉が違います', '合言葉の打ち間違い（前後の空白など）', 'ページの上の「合言葉」を入れ直す'],
+    closed: ['今は使えない時間です', '', '使える時間になってから、もう一度押す'],
+    admin: ['講師の合言葉でだけ使えます', '', '講師の合言葉を入れる'],
     not_ready: ['サーバの準備ができていません', 'サーバに APIキーか合言葉がまだ入っていない', '講師に伝える'],
     origin: ['このページからは使えません', '体験ページではない場所で開いている', '体験ページの URL から開く'],
     rate: ['短い時間に頼みすぎました', '1分あたりの回数の上限をこえた', '30秒ほど待って、もう一度押す'],
@@ -58,9 +60,10 @@ const PROXY_HINT = {
 };
 function explain(status, body) {
     const e = (body && body.error) || {};
+    if (e.type === 'proxy' && e.code === 'invalid') return { code: status, title: e.message, cause: '', fix: '' };   // 管理用のページで、設定の値が正しくないとき
     if (e.type === 'proxy') {
         const h = PROXY_HINT[e.code] || [e.message || 'サーバが受け付けませんでした', '', '講師に伝える'];
-        return { code: status, title: h[0], cause: h[1], fix: h[2] };
+        return { code: status, title: h[0], cause: e.code === 'closed' ? e.message : h[1], fix: h[2] };   // 時間外のときは、使える時間を見せる
     }
     const detail = e.message ? `${e.type || ''} ${e.code || ''} ${e.message}`.trim().slice(0, 800) : undefined;
     const out = (title, cause = '', fix = '') => ({ code: status, title, cause, fix, detail });
@@ -89,7 +92,11 @@ async function checkPass() {
     el.textContent = '…'; el.className = 'passstate';
     try {
         const r = await fetch(API_BASE + 'check', { headers: { 'X-Passcode': passcode() } });
-        el.textContent = r.ok ? 'OK' : r.status === 401 ? '違います' : 'サーバの準備中';
+        let j = null;
+        try { j = await r.json(); } catch (e) { /* 中身が読めないときは番号だけで分ける */ }
+        el.textContent = r.ok ? (j && j.role === 'admin' ? 'OK（講師）' : 'OK') : r.status === 401 ? '違います'
+            : j && j.error && j.error.code === 'closed' ? '時間外' : 'サーバの準備中';
+        el.title = r.ok ? '' : (j && j.error && j.error.message) || '';
         el.className = 'passstate ' + (r.ok ? 'ok' : 'ng');
     } catch (e) { el.textContent = 'サーバに届きません'; el.className = 'passstate ng'; }
 }

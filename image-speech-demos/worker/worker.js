@@ -1,5 +1,7 @@
 // 体験ページ（image-speech-demos）の 4〜7 が OpenAI の API を使うための中継。
-// 講師の APIキー（OPENAI_API_KEY）と合言葉（PASSCODE）は、この Worker の秘密情報にだけ置く（ページには渡さない）。
+// 講師の APIキー（OPENAI_API_KEY）と講師の合言葉（ADMIN_PASSCODE）は、この Worker の秘密情報にだけ置く（ページには渡さない）。
+// 講師の合言葉はいつでも使える。講師以外は「みんなの合言葉」で、講師が許可していて、決めた時間の中のときだけ使える。
+// みんなの合言葉・使える時間・許可は KV（SETTINGS）に置き、管理用のページ（admin.html）から講師が変える。
 // 通すのは、決めた3つの窓口と3つのモデルだけ。写真や声は記録しない（Workers Logs も使わない）。
 
 const ROUTES = {
@@ -9,6 +11,7 @@ const ROUTES = {
 };
 const MAX_BYTES = 8 * 1024 * 1024;   // 1回に送れる大きさ（写真は high でも 2〜3 MB、声は 15 秒で 0.5 MB ほど）
 const MAX_OUTPUT_TOKENS = 4000;      // 1回の答えの長さの上限（料金が増えすぎないように）
+const JST = new Intl.DateTimeFormat('ja-JP', { timeZone: 'Asia/Tokyo', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
 
 export default {
     async fetch(req, env) {
@@ -18,23 +21,34 @@ export default {
         const fail = (status, code, message) => Response.json({ error: { type: 'proxy', code, message } }, { status, headers: cors });
 
         if (req.method === 'OPTIONS') {
-            return new Response(null, { status: 204, headers: { ...cors, 'Access-Control-Allow-Methods': 'GET, POST',
+            return new Response(null, { status: 204, headers: { ...cors, 'Access-Control-Allow-Methods': 'GET, POST, PUT',
                 'Access-Control-Allow-Headers': 'Content-Type, X-Passcode', 'Access-Control-Max-Age': '86400' } });
         }
         if (!cors['Access-Control-Allow-Origin']) return fail(403, 'origin', '体験ページ以外からは使えません');
-        if (!env.OPENAI_API_KEY || !env.PASSCODE) return fail(503, 'not_ready', 'サーバに APIキーか合言葉がまだ入っていません');
-        if (!(await same(req.headers.get('X-Passcode') || '', env.PASSCODE))) return fail(401, 'passcode', '合言葉が違います');
-
-        const url = new URL(req.url);
-        if (req.method === 'GET' && url.pathname === '/check') return Response.json({ ok: true }, { headers: cors });
-        const path = url.pathname.replace(/^\/v1\//, '');
-        const route = ROUTES[path];
-        if (!route || req.method !== 'POST') return fail(404, 'not_found', 'この窓口はありません');
-
+        if (!env.OPENAI_API_KEY || !env.ADMIN_PASSCODE) return fail(503, 'not_ready', 'サーバに APIキーか講師の合言葉がまだ入っていません');
         if (env.LIMITER) {
             const { success } = await env.LIMITER.limit({ key: req.headers.get('CF-Connecting-IP') || 'all' });
             if (!success) return fail(429, 'rate', '短い時間に頼みすぎました');
         }
+
+        // だれが使っているか：講師（admin）・講師以外（user）・時間外（closed）・合言葉が違う（null）
+        const who = await roleOf(req.headers.get('X-Passcode') || '', env);
+        if (!who) return fail(401, 'passcode', '合言葉が違います');
+        if (who.closed) return fail(403, 'closed', who.closed);
+
+        const url = new URL(req.url);
+        if (req.method === 'GET' && url.pathname === '/check') return Response.json({ ok: true, role: who.role }, { headers: cors });
+        if (url.pathname === '/admin/settings') {
+            if (who.role !== 'admin') return fail(403, 'admin', '講師の合言葉でだけ使えます');
+            if (!env.SETTINGS) return fail(503, 'not_ready', 'サーバに設定の置き場所（KV）がありません');
+            if (req.method === 'GET') return Response.json(await loadSettings(env), { headers: cors });
+            if (req.method === 'PUT') return saveSettings(req, env, cors, fail);
+            return fail(404, 'not_found', 'この窓口はありません');
+        }
+
+        const path = url.pathname.replace(/^\/v1\//, '');
+        const route = ROUTES[path];
+        if (!route || req.method !== 'POST') return fail(404, 'not_found', 'この窓口はありません');
         if ((+req.headers.get('Content-Length') || 0) > MAX_BYTES) return fail(413, 'too_big', '送るものが大きすぎます');
 
         const headers = { Authorization: `Bearer ${env.OPENAI_API_KEY}` };
@@ -74,6 +88,40 @@ export default {
         return new Response(r.body, { status: r.status, headers: out });
     },
 };
+
+// みんなの合言葉・使える時間（開始と終了。ISO の文字列）・許可（enabled）。まだ決めていなければ、講師以外は使えない
+async function loadSettings(env) {
+    const s = env.SETTINGS ? await env.SETTINGS.get('access', 'json') : null;
+    return { passcode: '', start: '', end: '', enabled: false, updated: '', ...(s || {}) };
+}
+
+async function roleOf(given, env) {
+    if (!given) return null;
+    if (await same(given, env.ADMIN_PASSCODE)) return { role: 'admin' };
+    const s = await loadSettings(env);
+    if (!s.passcode || !(await same(given, s.passcode))) return null;
+    const now = Date.now(), start = Date.parse(s.start), end = Date.parse(s.end);
+    if (!s.enabled) return { closed: '講師が止めています' };
+    if (!(now >= start && now < end)) {
+        return { closed: isNaN(start) || isNaN(end) ? '使える時間がまだ決まっていません' : `使える時間は ${JST.format(start)}〜${JST.format(end)}（日本時間）です` };
+    }
+    return { role: 'user' };
+}
+
+async function saveSettings(req, env, cors, fail) {
+    let b;
+    try { b = await req.json(); } catch (e) { return fail(400, 'bad_json', '送った中身が JSON ではありません'); }
+    const passcode = String(b.passcode ?? '').trim();
+    if (passcode && (passcode.length < 4 || passcode.length > 64)) return fail(400, 'invalid', 'みんなの合言葉は 4〜64 文字にしてください');
+    if (passcode && (await same(passcode, env.ADMIN_PASSCODE))) return fail(400, 'invalid', 'みんなの合言葉は、講師の合言葉と別のものにしてください');
+    const start = b.start ? Date.parse(b.start) : NaN, end = b.end ? Date.parse(b.end) : NaN;
+    if ((b.start && isNaN(start)) || (b.end && isNaN(end))) return fail(400, 'invalid', '時間の書き方が正しくありません');
+    if (!isNaN(start) && !isNaN(end) && end <= start) return fail(400, 'invalid', '終わりは、始まりより後にしてください');
+    const s = { passcode, start: isNaN(start) ? '' : new Date(start).toISOString(), end: isNaN(end) ? '' : new Date(end).toISOString(),
+                enabled: !!b.enabled, updated: new Date().toISOString() };
+    await env.SETTINGS.put('access', JSON.stringify(s));
+    return Response.json(s, { headers: cors });
+}
 
 // 合言葉を、かかる時間で中身が分からない比べ方で比べる
 async function same(a, b) {
