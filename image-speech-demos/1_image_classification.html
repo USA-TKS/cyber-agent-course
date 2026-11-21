@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>画像とピクセル・画像分類</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500&family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
+<script>
+/* スライドの中（iframe）で開かれたときは、見出しと説明を隠し、← → をスライドの移動に回す */
+if (window.parent !== window || location.search.includes('embed')) {
+    document.documentElement.classList.add('embed');
+    window.addEventListener('keydown', (e) => {
+        if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+        e.preventDefault();
+        window.parent.postMessage(e.key === 'ArrowRight' ? 'demo:next' : 'demo:prev', '*');
+    }, true);
+}
+</script>
+<style>
+:root {
+    --bg: #ffffff; --ink: #1e1e1e; --muted: #555555; --dim: #9a9a9a;
+    --accent: #f57c00; --accent-strong: #d35400; --accent-soft: #fff5e8; --hl: #ffe76a;
+    --line: #e9e9e6; --panel: #f6f6f3; --radius: 18px;
+    --font: 'Zen Maru Gothic', sans-serif; --mono: 'JetBrains Mono', 'Zen Maru Gothic', monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font); font-weight: 500; font-size: 16px; line-height: 1.5; }
+header { display: flex; align-items: center; gap: 18px; padding: 14px 24px; border-bottom: 2px solid var(--line); flex-wrap: wrap; }
+header h1 { font-size: 24px; font-weight: 900; background: linear-gradient(transparent 60%, var(--hl) 60%, var(--hl) 92%, transparent 92%); padding: 0 4px; }
+header .tag { padding: 4px 12px; border-radius: 999px; background: var(--accent); color: #fff; font-size: 14px; font-weight: 900; }
+header .note { margin-left: auto; font-size: 14px; color: var(--muted); }
+main { display: grid; grid-template-columns: minmax(300px, 340px) minmax(380px, 1fr) minmax(320px, 400px); gap: 20px; padding: 12px 24px 10px; align-items: start; }
+@media (max-width: 1100px) { main { grid-template-columns: 1fr; } }
+section.panel { background: var(--panel); border-radius: var(--radius); padding: 14px 18px; }
+section.panel + section.panel { margin-top: 14px; }
+h2 { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 900; margin-bottom: 8px; }
+h2 .n { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 15px; }
+.btns { display: flex; flex-wrap: wrap; gap: 8px; }
+button, label.file { font-family: var(--font); font-size: 15px; font-weight: 900; padding: 8px 16px; border-radius: 999px; border: 2px solid var(--ink); background: #fff; color: var(--ink); cursor: pointer; }
+button.on, button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button:disabled { opacity: .4; cursor: default; }
+label.file input { display: none; }
+video#cam { display: none; }   /* 映像は真ん中の画面に出すので、ここでは読み込むだけ */
+#camBtns button, #camBtns label.file { padding: 8px 12px; }
+.ctrl { margin-top: 8px; }
+.ctrl .row { display: flex; justify-content: space-between; align-items: baseline; font-weight: 700; }
+.ctrl .row b { font-family: var(--mono); font-size: 15px; color: var(--accent-strong); }
+.ctrl small { display: block; color: var(--muted); font-size: 13px; }
+input[type=range] { width: 100%; accent-color: var(--accent); margin-top: 4px; }
+.check { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-weight: 700; cursor: pointer; }
+.check input { width: 18px; height: 18px; accent-color: var(--accent); }
+.stage { position: relative; background: #fff; border: 2px solid var(--ink); border-radius: var(--radius); padding: 14px; }
+.stage .cap { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; font-weight: 900; }
+.stage .cap span { font-size: 14px; color: var(--muted); font-weight: 700; }
+.viewwrap { position: relative; width: min(100%, calc(100vh - 250px)); min-width: 300px; margin: 0 auto; aspect-ratio: 1; }
+.viewwrap canvas { position: absolute; left: 0; top: 0; width: 100%; height: 100%; border-radius: 8px; }
+canvas#view { image-rendering: pixelated; background: var(--panel); cursor: crosshair; }
+canvas#heat { pointer-events: none; }
+.pixel { display: flex; align-items: center; gap: 14px; margin-top: 12px; min-height: 64px; }
+.pixel .sw { width: 56px; height: 56px; border-radius: 10px; border: 2px solid var(--ink); background: #fff; flex: none; }
+.pixel .rgb { display: flex; gap: 8px; font-family: var(--mono); font-size: 18px; }
+.pixel .rgb span { padding: 4px 10px; border-radius: 8px; background: var(--panel); }
+.pixel .rgb .r { color: #c0392b; } .pixel .rgb .g { color: #1e8449; } .pixel .rgb .b { color: #1f5fbf; }
+.pixel p { font-size: 14px; color: var(--muted); }
+.result h2 { margin-bottom: 4px; }
+.result .sub { font-size: 14px; color: var(--muted); margin-bottom: 8px; }
+.bars { display: grid; gap: 6px; }
+.bar { display: grid; grid-template-columns: 1fr 64px; gap: 4px 10px; align-items: center; }
+.bar .w { font-weight: 900; font-size: 17px; line-height: 1.25; }
+.bar .v { text-align: right; font-family: var(--mono); font-weight: 500; font-size: 17px; }
+.bar .b { grid-column: 1 / -1; height: 10px; border-radius: 5px; background: #e6e6e1; overflow: hidden; }
+.bar .b i { display: block; height: 100%; width: 0; border-radius: 7px; background: var(--ink); transition: width .25s; }
+.bar.top .b i { background: var(--accent); }
+.bar.top .w { color: var(--accent-strong); }
+.status { margin-top: 10px; font-size: 14px; color: var(--muted); }
+.status:empty { display: none; }
+.status.err { color: #c0392b; font-weight: 700; }
+.tips { margin-top: 8px; display: grid; gap: 4px; }
+.tips li { list-style: none; display: flex; gap: 8px; font-size: 14px; line-height: 1.45; }
+.tips li b { flex: none; display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--ink); color: #fff; font-size: 13px; }
+/* 4 AIが見ている場所 */
+.look .sub2 { font-size: 14px; color: var(--muted); margin-bottom: 8px; }
+.seg3 { display: grid; grid-template-columns: repeat(3, 1fr); border: 2px solid var(--ink); border-radius: 999px; overflow: hidden; margin-top: 4px; }
+.seg3 button { border: 0; border-radius: 0; padding: 6px 0; }
+.seg3 button.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+.look .meter { margin-top: 8px; font-weight: 700; font-size: 15px; min-height: 44px; }
+.look .meter b { font-family: var(--mono); color: var(--accent-strong); }
+.look .legend { display: flex; align-items: center; gap: 8px; margin-top: 6px; font-size: 13px; color: var(--muted); }
+.look .legend i { width: 90px; height: 12px; border-radius: 6px; background: linear-gradient(90deg, rgba(214, 40, 40, 0), rgba(214, 40, 40, .75)); border: 1px solid var(--line); }
+
+/* スライドの中に入れたとき */
+html.embed header, html.embed video#cam, html.embed .tips, html.embed .sub, html.embed .ctrl small, html.embed .pixel p, html.embed .status:not(.err) { display: none; }
+html.embed main { padding: 12px 14px; gap: 14px; }
+html.embed .viewwrap { width: min(100%, calc(100vh - 130px)); }
+html.embed .look .sub2 { display: none; }
+html.embed .bars { gap: 6px; }
+html.embed .look .meter { min-height: 0; margin-top: 6px; }
+html.embed #sizeNote { display: none; }
+html.embed main { grid-template-columns: 330px minmax(360px, 1fr) minmax(300px, 380px); }
+html.embed section.panel { padding: 10px 16px; }
+html.embed section.panel + section.panel { margin-top: 10px; }
+html.embed h2 { margin-bottom: 6px; }
+html.embed .ctrl { margin-top: 2px; }
+html.embed .btns button, html.embed .btns label.file { padding: 6px 12px; }
+html.embed .pixel { margin-top: 8px; min-height: 0; }
+</style>
+</head>
+<body>
+<header>
+    <span class="tag">体験1</span>
+    <h1>画像とピクセル・画像分類</h1>
+    <span class="note">カメラの映像はこのパソコンの中だけで使われます（外には送りません）</span>
+</header>
+<main>
+    <div>
+        <section class="panel">
+            <h2><span class="n">1</span>写真を用意する</h2>
+            <div class="btns" id="camBtns">
+                <button id="btnCam" class="primary">カメラを使う</button>
+                <button id="btnShot" disabled>撮る</button>
+                <label class="file">画像を開く<input id="file" type="file" accept="image/*"></label>
+            </div>
+            <video id="cam" playsinline muted></video>
+            <p class="status" id="camStatus">「撮る」で止めて、じっくり比べられる</p>
+            <ul class="tips">
+                <li><b>1</b>物を撮って、AIの答えを見る</li>
+                <li><b>2</b>何マスで答えが変わる？</li>
+                <li><b>3</b>ノイズ・回転・明るさで確率は？</li>
+                <li><b>4</b>「調べる」で手がかりの場所を見る</li>
+            </ul>
+        </section>
+        <section class="panel">
+            <h2><span class="n">2</span>画像を変える</h2>
+            <div class="ctrl"><div class="row">マスの数（たて・よこ）<b id="vRes">224</b></div><input id="res" type="range" min="0" max="7" step="1" value="7"></div>
+            <div class="ctrl"><div class="row">ノイズ<b id="vNoise">0%</b></div><input id="noise" type="range" min="0" max="100" step="5" value="0"></div>
+            <div class="ctrl"><div class="row">回転<b id="vRot">0°</b></div><input id="rot" type="range" min="0" max="180" step="15" value="0"></div>
+            <div class="ctrl"><div class="row">明るさ<b id="vBri">0</b></div><input id="bri" type="range" min="-100" max="100" step="10" value="0"></div>
+            <div class="btns" style="margin-top:10px; align-items:center; justify-content:space-between;"><label class="check" style="margin:0;"><input id="gray" type="checkbox">白黒にする</label><button id="btnReset">元に戻す</button></div>
+        </section>
+    </div>
+
+    <div class="stage">
+        <div class="cap">AIが見ている画像<span id="sizeNote">224 × 224 マス（このAIはいつもこの大きさで見る）</span></div>
+        <div class="viewwrap"><canvas id="view" width="224" height="224"></canvas><canvas id="heat" width="224" height="224"></canvas></div>
+        <div class="pixel">
+            <div class="sw" id="sw"></div>
+            <div>
+                <div class="rgb"><span class="r" id="pr">R —</span><span class="g" id="pg">G —</span><span class="b" id="pb">B —</span></div>
+                <p id="pxNote">画像の上にマウスを乗せると、そのマスの色の数字が出ます（0〜255）</p>
+            </div>
+        </div>
+    </div>
+
+    <div>
+    <section class="panel result" id="resultPanel">
+        <h2><span class="n">3</span>AIの答え（上位5つ）</h2>
+        <p class="sub">1000種類のどれに近いかを、確率で答える</p>
+        <div class="bars" id="bars"></div>
+        <p class="status" id="aiStatus">AIを読み込んでいます…</p>
+    </section>
+    <section class="panel look">
+        <h2><span class="n">4</span>AIが見ている場所</h2>
+        <p class="sub2">四角で一部を隠して分類し直す。赤い所ほど手がかり</p>
+        <div class="ctrl">
+            <div class="seg3" id="occ"><button data-n="4">大（16回）</button><button data-n="7" class="on">中（49回）</button><button data-n="14">小（196回）</button></div></div>
+        <div class="btns" style="margin-top:10px;"><button id="btnLook" class="primary">調べる</button><button id="btnClear" disabled>消す</button></div>
+        <p class="meter" id="lookMeter">写真を用意してから「調べる」</p>
+    </section>
+    </div>
+</main>
+
+<script type="module">
+import { FilesetResolver, ImageClassifier } from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.1.0/vision_bundle.mjs';
+
+const RES = [4, 8, 16, 32, 48, 64, 112, 224];
+// AIの答え（1000種類の英語の名前）を日本語にする表。並びはAIの答えの番号順
+const JA = {
+    // 魚・鳥・両生類・は虫類（0〜69）
+    'tench': 'テンチ（コイの仲間の魚）', 'goldfish': '金魚', 'great white shark': 'ホホジロザメ', 'tiger shark': 'イタチザメ',
+    'hammerhead': 'シュモクザメ', 'electric ray': 'シビレエイ', 'stingray': 'アカエイ', 'cock': 'おんどり', 'hen': 'めんどり',
+    'ostrich': 'ダチョウ', 'brambling': 'アトリ（小鳥）', 'goldfinch': 'ゴシキヒワ（小鳥）', 'house finch': 'メキシコマシコ（小鳥）',
+    'junco': 'ユキヒメドリ（小鳥）', 'indigo bunting': 'ルリノジコ（小鳥）', 'robin': 'コマツグミ（鳥）', 'bulbul': 'ヒヨドリ',
+    'jay': 'アオカケス（鳥）', 'magpie': 'カササギ', 'chickadee': 'アメリカコガラ（小鳥）', 'water ouzel': 'カワガラス',
+    'kite': 'トビ（鳥）', 'bald eagle': 'ハクトウワシ', 'vulture': 'ハゲワシ', 'great grey owl': 'カラフトフクロウ',
+    'European fire salamander': 'ファイアサラマンダー', 'common newt': 'イモリ', 'eft': 'イモリの子ども',
+    'spotted salamander': 'サンショウウオ', 'axolotl': 'ウーパールーパー', 'bullfrog': 'ウシガエル', 'tree frog': 'アマガエル',
+    'tailed frog': 'オガエル（カエル）', 'loggerhead': 'アカウミガメ', 'leatherback turtle': 'オサガメ', 'mud turtle': 'ドロガメ',
+    'terrapin': 'キスイガメ', 'box turtle': 'ハコガメ', 'banded gecko': 'ヤモリ', 'common iguana': 'イグアナ',
+    'American chameleon': 'アノール（トカゲ）', 'whiptail': 'ハシリトカゲ', 'agama': 'アガマ（トカゲ）', 'frilled lizard': 'エリマキトカゲ',
+    'alligator lizard': 'アリゲータートカゲ', 'Gila monster': 'アメリカドクトカゲ', 'green lizard': 'ミドリカナヘビ',
+    'African chameleon': 'カメレオン', 'Komodo dragon': 'コモドオオトカゲ', 'African crocodile': 'ナイルワニ',
+    'American alligator': 'アメリカアリゲーター（ワニ）', 'triceratops': 'トリケラトプス', 'thunder snake': 'ミミズヘビ',
+    'ringneck snake': 'クビワヘビ', 'hognose snake': 'シシバナヘビ', 'green snake': '緑のヘビ', 'king snake': 'キングスネーク',
+    'garter snake': 'ガーターヘビ', 'water snake': 'ミズヘビ', 'vine snake': 'ツルヘビ', 'night snake': 'ナイトスネーク（ヘビ）',
+    'boa constrictor': 'ボア（ヘビ）', 'rock python': 'アフリカニシキヘビ', 'Indian cobra': 'インドコブラ',
+    'green mamba': 'グリーンマンバ（ヘビ）', 'sea snake': 'ウミヘビ', 'horned viper': 'ツノクサリヘビ', 'diamondback': 'ガラガラヘビ',
+    'sidewinder': 'ヨコバイガラガラヘビ',
+    // 虫・クモ・鳥・海の生き物（69〜150）
+    'trilobite': '三葉虫', 'harvestman': 'ザトウムシ', 'scorpion': 'サソリ', 'black and gold garden spider': 'コガネグモ',
+    'barn spider': 'オニグモ', 'garden spider': 'ニワオニグモ', 'black widow': 'クロゴケグモ', 'tarantula': 'タランチュラ',
+    'wolf spider': 'コモリグモ', 'tick': 'ダニ', 'centipede': 'ムカデ', 'black grouse': 'クロライチョウ', 'ptarmigan': 'ライチョウ',
+    'ruffed grouse': 'エリマキライチョウ', 'prairie chicken': 'ソウゲンライチョウ', 'peacock': 'クジャク', 'quail': 'ウズラ',
+    'partridge': 'ヤマウズラ', 'African grey': 'ヨウム（オウム）', 'macaw': 'コンゴウインコ', 'sulphur-crested cockatoo': 'キバタン（オウム）',
+    'lorikeet': 'ゴシキセイガイインコ', 'coucal': 'バンケン（鳥）', 'bee eater': 'ハチクイ（鳥）', 'hornbill': 'サイチョウ',
+    'hummingbird': 'ハチドリ', 'jacamar': 'キリハシ（鳥）', 'toucan': 'オオハシ（鳥）', 'drake': 'カモ（おす）',
+    'red-breasted merganser': 'ウミアイサ（カモ）', 'goose': 'ガチョウ', 'black swan': 'コクチョウ', 'tusker': 'きばのあるゾウ',
+    'echidna': 'ハリモグラ', 'platypus': 'カモノハシ', 'wallaby': 'ワラビー', 'koala': 'コアラ', 'wombat': 'ウォンバット',
+    'jellyfish': 'クラゲ', 'sea anemone': 'イソギンチャク', 'brain coral': 'ノウサンゴ', 'flatworm': 'ヒラムシ（プラナリアの仲間）',
+    'nematode': '線虫', 'conch': 'ほら貝', 'snail': 'カタツムリ', 'slug': 'ナメクジ', 'sea slug': 'ウミウシ', 'chiton': 'ヒザラガイ',
+    'chambered nautilus': 'オウムガイ', 'Dungeness crab': 'アメリカイチョウガニ', 'rock crab': 'イワガニ', 'fiddler crab': 'シオマネキ',
+    'king crab': 'タラバガニ', 'American lobster': 'ロブスター', 'spiny lobster': 'イセエビ', 'crayfish': 'ザリガニ',
+    'hermit crab': 'ヤドカリ', 'isopod': 'ダンゴムシの仲間', 'white stork': 'シュバシコウ（コウノトリ）', 'black stork': 'ナベコウ（コウノトリ）',
+    'spoonbill': 'ヘラサギ', 'flamingo': 'フラミンゴ', 'little blue heron': 'ヒメアカクロサギ（サギ）', 'American egret': 'ダイサギ',
+    'bittern': 'サンカノゴイ（サギ）', 'limpkin': 'ツルモドキ', 'European gallinule': 'セイケイ（鳥）', 'American coot': 'アメリカオオバン',
+    'bustard': 'ノガン', 'ruddy turnstone': 'キョウジョシギ', 'red-backed sandpiper': 'ハマシギ', 'redshank': 'アカアシシギ',
+    'dowitcher': 'オオハシシギ', 'oystercatcher': 'ミヤコドリ', 'pelican': 'ペリカン', 'king penguin': 'オウサマペンギン',
+    'albatross': 'アホウドリ', 'grey whale': 'コククジラ', 'killer whale': 'シャチ', 'dugong': 'ジュゴン', 'sea lion': 'アシカ',
+    // 犬（151〜268）
+    'Chihuahua': 'チワワ', 'Japanese spaniel': '狆（チン・犬）', 'Maltese dog': 'マルチーズ', 'Pekinese': 'ペキニーズ（犬）',
+    'Shih-Tzu': 'シーズー', 'Blenheim spaniel': 'キャバリア（犬）', 'papillon': 'パピヨン（犬）', 'toy terrier': 'トイ・テリア（犬）',
+    'Rhodesian ridgeback': 'ローデシアン・リッジバック（犬）', 'Afghan hound': 'アフガン・ハウンド（犬）', 'basset': 'バセット・ハウンド（犬）',
+    'beagle': 'ビーグル', 'bloodhound': 'ブラッドハウンド（犬）', 'bluetick': 'ブルーティック・クーンハウンド（犬）',
+    'black-and-tan coonhound': 'ブラック・アンド・タン・クーンハウンド（犬）', 'Walker hound': 'ウォーカー・ハウンド（犬）',
+    'English foxhound': 'イングリッシュ・フォックスハウンド（犬）', 'redbone': 'レッドボーン・クーンハウンド（犬）', 'borzoi': 'ボルゾイ（犬）',
+    'Irish wolfhound': 'アイリッシュ・ウルフハウンド（犬）', 'Italian greyhound': 'イタリアン・グレーハウンド（犬）', 'whippet': 'ウィペット（犬）',
+    'Ibizan hound': 'イビザン・ハウンド（犬）', 'Norwegian elkhound': 'ノルウェジアン・エルクハウンド（犬）', 'otterhound': 'オッターハウンド（犬）',
+    'Saluki': 'サルーキ（犬）', 'Scottish deerhound': 'ディアハウンド（犬）', 'Weimaraner': 'ワイマラナー（犬）',
+    'Staffordshire bullterrier': 'スタッフォードシャー・ブル・テリア（犬）', 'American Staffordshire terrier': 'アメリカン・スタッフォードシャー・テリア（犬）',
+    'Bedlington terrier': 'ベドリントン・テリア（犬）', 'Border terrier': 'ボーダー・テリア（犬）', 'Kerry blue terrier': 'ケリー・ブルー・テリア（犬）',
+    'Irish terrier': 'アイリッシュ・テリア（犬）', 'Norfolk terrier': 'ノーフォーク・テリア（犬）', 'Norwich terrier': 'ノーリッチ・テリア（犬）',
+    'Yorkshire terrier': 'ヨークシャー・テリア（犬）', 'wire-haired fox terrier': 'ワイヤー・フォックス・テリア（犬）',
+    'Lakeland terrier': 'レークランド・テリア（犬）', 'Sealyham terrier': 'シーリハム・テリア（犬）', 'Airedale': 'エアデール・テリア（犬）',
+    'cairn': 'ケアーン・テリア（犬）', 'Australian terrier': 'オーストラリアン・テリア（犬）', 'Dandie Dinmont': 'ダンディ・ディンモント・テリア（犬）',
+    'Boston bull': 'ボストン・テリア（犬）', 'miniature schnauzer': 'ミニチュア・シュナウザー（犬）', 'giant schnauzer': 'ジャイアント・シュナウザー（犬）',
+    'standard schnauzer': 'スタンダード・シュナウザー（犬）', 'Scotch terrier': 'スコティッシュ・テリア（犬）', 'Tibetan terrier': 'チベタン・テリア（犬）',
+    'silky terrier': 'シルキー・テリア（犬）', 'soft-coated wheaten terrier': 'ソフトコーテッド・ウィートン・テリア（犬）',
+    'West Highland white terrier': 'ウエスト・ハイランド・ホワイト・テリア（犬）', 'Lhasa': 'ラサ・アプソ（犬）',
+    'flat-coated retriever': 'フラットコーテッド・レトリバー（犬）', 'curly-coated retriever': 'カーリーコーテッド・レトリバー（犬）',
+    'golden retriever': 'ゴールデンレトリバー', 'Labrador retriever': 'ラブラドール・レトリバー', 'Chesapeake Bay retriever': 'チェサピーク・ベイ・レトリバー（犬）',
+    'German short-haired pointer': 'ジャーマン・ショートヘアード・ポインター（犬）', 'vizsla': 'ビズラ（犬）', 'English setter': 'イングリッシュ・セター（犬）',
+    'Irish setter': 'アイリッシュ・セター（犬）', 'Gordon setter': 'ゴードン・セター（犬）', 'Brittany spaniel': 'ブリタニー（犬）',
+    'clumber': 'クランバー・スパニエル（犬）', 'English springer': 'イングリッシュ・スプリンガー・スパニエル（犬）',
+    'Welsh springer spaniel': 'ウェルシュ・スプリンガー・スパニエル（犬）', 'cocker spaniel': 'コッカー・スパニエル（犬）',
+    'Sussex spaniel': 'サセックス・スパニエル（犬）', 'Irish water spaniel': 'アイリッシュ・ウォーター・スパニエル（犬）', 'kuvasz': 'クーバース（犬）',
+    'schipperke': 'スキッパーキ（犬）', 'groenendael': 'グローネンダール（犬）', 'malinois': 'マリノア（犬）', 'briard': 'ブリアード（犬）',
+    'kelpie': 'ケルピー（犬）', 'komondor': 'コモンドール（犬）', 'Old English sheepdog': 'オールド・イングリッシュ・シープドッグ（犬）',
+    'Shetland sheepdog': 'シェットランド・シープドッグ（犬）', 'collie': 'コリー（犬）', 'Border collie': 'ボーダー・コリー（犬）',
+    'Bouvier des Flandres': 'ブービエ・デ・フランダース（犬）', 'Rottweiler': 'ロットワイラー（犬）', 'German shepherd': 'ジャーマン・シェパード（犬）',
+    'Doberman': 'ドーベルマン（犬）', 'miniature pinscher': 'ミニチュア・ピンシャー（犬）', 'Greater Swiss Mountain dog': 'グレーター・スイス・マウンテン・ドッグ（犬）',
+    'Bernese mountain dog': 'バーニーズ・マウンテン・ドッグ（犬）', 'Appenzeller': 'アッペンツェラー（犬）', 'EntleBucher': 'エントレブッハー（犬）',
+    'boxer': 'ボクサー（犬）', 'bull mastiff': 'ブルマスティフ（犬）', 'Tibetan mastiff': 'チベタン・マスティフ（犬）', 'French bulldog': 'フレンチ・ブルドッグ',
+    'Great Dane': 'グレート・デーン（犬）', 'Saint Bernard': 'セント・バーナード（犬）', 'Eskimo dog': 'エスキモー犬', 'malamute': 'アラスカン・マラミュート（犬）',
+    'Siberian husky': 'シベリアン・ハスキー', 'dalmatian': 'ダルメシアン（犬）', 'affenpinscher': 'アーフェンピンシャー（犬）', 'basenji': 'バセンジー（犬）',
+    'pug': 'パグ（犬）', 'Leonberg': 'レオンベルガー（犬）', 'Newfoundland': 'ニューファンドランド（犬）', 'Great Pyrenees': 'グレート・ピレニーズ（犬）',
+    'Samoyed': 'サモエド（犬）', 'Pomeranian': 'ポメラニアン', 'chow': 'チャウチャウ（犬）', 'keeshond': 'キースホンド（犬）',
+    'Brabancon griffon': 'ブリュッセル・グリフォン（犬）', 'Pembroke': 'ウェルシュ・コーギー（犬）', 'Cardigan': 'カーディガン・コーギー（犬）',
+    'toy poodle': 'トイ・プードル', 'miniature poodle': 'ミニチュア・プードル', 'standard poodle': 'スタンダード・プードル', 'Mexican hairless': 'メキシカン・ヘアレス（犬）',
+    // オオカミ・ネコ・クマ・虫・ほ乳類（269〜397）
+    'timber wolf': 'ハイイロオオカミ', 'white wolf': 'ホッキョクオオカミ', 'red wolf': 'アカオオカミ', 'coyote': 'コヨーテ', 'dingo': 'ディンゴ',
+    'dhole': 'ドール（野生の犬）', 'African hunting dog': 'リカオン', 'hyena': 'ハイエナ', 'red fox': 'アカギツネ', 'kit fox': 'キットギツネ',
+    'Arctic fox': 'ホッキョクギツネ', 'grey fox': 'ハイイロギツネ', 'tabby': 'とら猫', 'tiger cat': 'しま模様の猫', 'Persian cat': 'ペルシャ猫',
+    'Siamese cat': 'シャム猫', 'Egyptian cat': 'エジプシャン・マウ（猫）', 'cougar': 'ピューマ', 'lynx': 'オオヤマネコ', 'leopard': 'ヒョウ',
+    'snow leopard': 'ユキヒョウ', 'jaguar': 'ジャガー', 'lion': 'ライオン', 'tiger': 'トラ', 'cheetah': 'チーター', 'brown bear': 'ヒグマ',
+    'American black bear': 'アメリカクロクマ', 'ice bear': 'ホッキョクグマ', 'sloth bear': 'ナマケグマ', 'mongoose': 'マングース',
+    'meerkat': 'ミーアキャット', 'tiger beetle': 'ハンミョウ', 'ladybug': 'テントウムシ', 'ground beetle': 'オサムシ',
+    'long-horned beetle': 'カミキリムシ', 'leaf beetle': 'ハムシ', 'dung beetle': 'フンコロガシ', 'rhinoceros beetle': 'カブトムシ',
+    'weevil': 'ゾウムシ', 'fly': 'ハエ', 'bee': 'ハチ', 'ant': 'アリ', 'grasshopper': 'バッタ', 'cricket': 'コオロギ', 'walking stick': 'ナナフシ',
+    'cockroach': 'ゴキブリ', 'mantis': 'カマキリ', 'cicada': 'セミ', 'leafhopper': 'ヨコバイ（虫）', 'lacewing': 'クサカゲロウ',
+    'dragonfly': 'トンボ', 'damselfly': 'イトトンボ', 'admiral': 'アカタテハ（チョウ）', 'ringlet': 'ジャノメチョウ',
+    'monarch': 'オオカバマダラ（チョウ）', 'cabbage butterfly': 'モンシロチョウ', 'sulphur butterfly': 'キチョウ', 'lycaenid': 'シジミチョウ',
+    'starfish': 'ヒトデ', 'sea urchin': 'ウニ', 'sea cucumber': 'ナマコ', 'wood rabbit': 'ワタオウサギ', 'hare': 'ノウサギ',
+    'Angora': 'アンゴラウサギ', 'hamster': 'ハムスター', 'porcupine': 'ヤマアラシ', 'fox squirrel': 'キツネリス', 'marmot': 'マーモット',
+    'beaver': 'ビーバー', 'guinea pig': 'モルモット', 'sorrel': '栗毛の馬', 'zebra': 'シマウマ', 'hog': 'ブタ', 'wild boar': 'イノシシ',
+    'warthog': 'イボイノシシ', 'hippopotamus': 'カバ', 'ox': 'ウシ', 'water buffalo': 'スイギュウ', 'bison': 'バイソン', 'ram': 'ヒツジ（おす）',
+    'bighorn': 'オオツノヒツジ', 'ibex': 'アイベックス（ヤギ）', 'hartebeest': 'ハーテビースト（ウシの仲間）', 'impala': 'インパラ',
+    'gazelle': 'ガゼル', 'Arabian camel': 'ヒトコブラクダ', 'llama': 'ラマ', 'weasel': 'イタチ', 'mink': 'ミンク', 'polecat': 'ケナガイタチ',
+    'black-footed ferret': 'クロアシイタチ', 'otter': 'カワウソ', 'skunk': 'スカンク', 'badger': 'アナグマ', 'armadillo': 'アルマジロ',
+    'three-toed sloth': 'ナマケモノ', 'orangutan': 'オランウータン', 'gorilla': 'ゴリラ', 'chimpanzee': 'チンパンジー', 'gibbon': 'テナガザル',
+    'siamang': 'フクロテナガザル', 'guenon': 'グエノン（サル）', 'patas': 'パタスモンキー', 'baboon': 'ヒヒ', 'macaque': 'マカク（ニホンザルの仲間）',
+    'langur': 'ラングール（サル）', 'colobus': 'コロブス（サル）', 'proboscis monkey': 'テングザル', 'marmoset': 'マーモセット（サル）',
+    'capuchin': 'オマキザル', 'howler monkey': 'ホエザル', 'titi': 'ティティ（サル）', 'spider monkey': 'クモザル', 'squirrel monkey': 'リスザル',
+    'Madagascar cat': 'ワオキツネザル', 'indri': 'インドリ（サル）', 'Indian elephant': 'アジアゾウ', 'African elephant': 'アフリカゾウ',
+    'lesser panda': 'レッサーパンダ', 'giant panda': 'パンダ', 'barracouta': 'クロタチカマス（魚）', 'eel': 'ウナギ', 'coho': 'ギンザケ',
+    'rock beauty': 'ロックビューティー（魚）', 'anemone fish': 'クマノミ', 'sturgeon': 'チョウザメ', 'gar': 'ガー（魚）', 'lionfish': 'ミノカサゴ',
+    'puffer': 'フグ',
+    // 物（398〜915）
+    'abacus': 'そろばん', 'abaya': 'アバヤ（黒くて長い服）', 'academic gown': '卒業式のガウン', 'accordion': 'アコーディオン',
+    'acoustic guitar': 'ギター', 'aircraft carrier': '空母', 'airliner': '旅客機', 'airship': '飛行船', 'altar': '祭壇', 'ambulance': '救急車',
+    'amphibian': '水陸両用車', 'analog clock': 'アナログ時計', 'apiary': 'ミツバチの巣箱', 'apron': 'エプロン', 'ashcan': 'ゴミ箱',
+    'assault rifle': '自動小銃', 'backpack': 'リュック', 'bakery': 'パン屋', 'balance beam': '平均台', 'balloon': '風船', 'ballpoint': 'ボールペン',
+    'Band Aid': 'ばんそうこう', 'banjo': 'バンジョー', 'bannister': '手すり', 'barbell': 'バーベル', 'barber chair': '床屋のいす',
+    'barbershop': '床屋', 'barn': '納屋', 'barometer': '気圧計', 'barrel': 'たる', 'barrow': '手押し車', 'baseball': '野球のボール',
+    'basketball': 'バスケットボール', 'bassinet': 'かごのベビーベッド', 'bassoon': 'ファゴット', 'bathing cap': '水泳帽', 'bath towel': 'バスタオル',
+    'bathtub': '浴槽', 'beach wagon': 'ステーションワゴン', 'beacon': '灯台', 'beaker': 'ビーカー', 'bearskin': '毛皮の高い帽子',
+    'beer bottle': 'ビールのびん', 'beer glass': 'グラス', 'bell cote': '鐘楼', 'bib': 'よだれかけ', 'bicycle-built-for-two': '2人乗り自転車',
+    'bikini': 'ビキニ', 'binder': 'バインダー', 'binoculars': '双眼鏡', 'birdhouse': '鳥の巣箱', 'boathouse': 'ボート小屋', 'bobsled': 'ボブスレー',
+    'bolo tie': 'ループタイ', 'bonnet': 'ボンネット（帽子）', 'bookcase': '本棚', 'bookshop': '本屋', 'bottlecap': 'びんのふた', 'bow': '弓',
+    'bow tie': '蝶ネクタイ', 'brass': '記念のプレート', 'brassiere': 'ブラジャー', 'breakwater': '防波堤', 'breastplate': 'よろいの胸当て',
+    'broom': 'ほうき', 'bucket': 'バケツ', 'buckle': 'バックル', 'bulletproof vest': '防弾チョッキ', 'bullet train': '新幹線', 'butcher shop': '肉屋',
+    'cab': 'タクシー', 'caldron': '大きな鍋', 'candle': 'ろうそく', 'cannon': '大砲', 'canoe': 'カヌー', 'can opener': '缶切り',
+    'cardigan': 'カーディガン', 'car mirror': '車のミラー', 'carousel': 'メリーゴーラウンド', "carpenter's kit": '工具箱', 'carton': '段ボール箱',
+    'car wheel': '車のホイール', 'cash machine': 'ATM', 'cassette': 'カセットテープ', 'cassette player': 'カセットプレーヤー', 'castle': '城',
+    'catamaran': '双胴船', 'CD player': 'CDプレーヤー', 'cello': 'チェロ', 'cellular telephone': '携帯電話', 'chain': 'くさり',
+    'chainlink fence': '金網のフェンス', 'chain mail': 'くさりかたびら', 'chain saw': 'チェーンソー', 'chest': '木の箱', 'chiffonier': 'たんす',
+    'chime': 'チャイム（鐘）', 'china cabinet': '食器棚', 'Christmas stocking': 'クリスマスの靴下', 'church': '教会', 'cinema': '映画館',
+    'cleaver': '中華包丁', 'cliff dwelling': '岩をくりぬいた家', 'cloak': 'マント', 'clog': '木靴', 'cocktail shaker': 'シェーカー',
+    'coffee mug': 'マグカップ', 'coffeepot': 'コーヒーポット', 'coil': 'コイル（うずまき）', 'combination lock': 'ダイヤル錠',
+    'computer keyboard': 'キーボード', 'confectionery': 'お菓子屋', 'container ship': 'コンテナ船', 'convertible': 'オープンカー',
+    'corkscrew': 'ワインの栓抜き', 'cornet': 'コルネット（楽器）', 'cowboy boot': 'カウボーイブーツ', 'cowboy hat': 'カウボーイハット',
+    'cradle': 'ゆりかご', 'crash helmet': 'ヘルメット', 'crate': '木箱', 'crib': 'ベビーベッド', 'Crock Pot': '電気鍋',
+    'croquet ball': 'クロッケーのボール', 'crutch': '松葉づえ', 'cuirass': 'よろいの胴', 'dam': 'ダム', 'desk': '机',
+    'desktop computer': 'デスクトップパソコン', 'dial telephone': 'ダイヤル式の電話', 'diaper': 'おむつ', 'digital clock': 'デジタル時計',
+    'digital watch': 'デジタル腕時計', 'dining table': 'テーブル', 'dishrag': 'ふきん', 'dishwasher': '食器洗い機', 'disk brake': 'ディスクブレーキ',
+    'dock': '波止場', 'dogsled': '犬ぞり', 'dome': 'ドーム', 'doormat': '玄関マット', 'drilling platform': '石油を掘る海の基地', 'drum': 'たいこ',
+    'drumstick': 'ドラムのばち', 'dumbbell': 'ダンベル', 'Dutch oven': 'ダッチオーブン（鍋）', 'electric fan': '扇風機', 'electric guitar': 'エレキギター',
+    'electric locomotive': '電気機関車', 'entertainment center': 'テレビ台', 'envelope': '封筒', 'espresso maker': 'エスプレッソマシン',
+    'face powder': 'おしろい', 'feather boa': '羽根のえりまき', 'file': '書類棚', 'fireboat': '消防艇', 'fire engine': '消防車',
+    'fire screen': '暖炉の囲い', 'flagpole': '旗ざお', 'flute': 'フルート', 'folding chair': '折りたたみいす', 'football helmet': 'アメフトのヘルメット',
+    'forklift': 'フォークリフト', 'fountain': '噴水', 'fountain pen': '万年筆', 'four-poster': '柱つきのベッド', 'freight car': '貨車',
+    'French horn': 'ホルン', 'frying pan': 'フライパン', 'fur coat': '毛皮のコート', 'garbage truck': 'ゴミ収集車', 'gasmask': 'ガスマスク',
+    'gas pump': 'ガソリンの給油機', 'goblet': '足つきのグラス', 'go-kart': 'ゴーカート', 'golf ball': 'ゴルフボール', 'golfcart': 'ゴルフカート',
+    'gondola': 'ゴンドラ（舟）', 'gong': 'どら', 'gown': 'ドレス', 'grand piano': 'グランドピアノ', 'greenhouse': '温室',
+    'grille': '車の前の格子', 'grocery store': '食料品店', 'guillotine': 'ギロチン', 'hair slide': 'ヘアクリップ', 'hair spray': 'ヘアスプレー',
+    'half track': '軍用車', 'hammer': 'かなづち', 'hamper': 'かご', 'hand blower': 'ドライヤー', 'hand-held computer': '携帯端末',
+    'handkerchief': 'ハンカチ', 'hard disc': 'ハードディスク', 'harmonica': 'ハーモニカ', 'harp': 'ハープ', 'harvester': 'コンバイン',
+    'hatchet': '手おの', 'holster': '銃を入れるケース', 'home theater': 'ホームシアター', 'honeycomb': 'ハチの巣', 'hook': 'フック',
+    'hoopskirt': 'フープスカート', 'horizontal bar': '鉄棒', 'horse cart': '馬車', 'hourglass': '砂時計', 'iPod': '音楽プレーヤー',
+    'iron': 'アイロン', "jack-o'-lantern": 'ハロウィンのかぼちゃ', 'jean': 'ジーンズ', 'jeep': 'ジープ', 'jersey': 'Tシャツ',
+    'jigsaw puzzle': 'ジグソーパズル', 'jinrikisha': '人力車', 'joystick': 'ジョイスティック', 'kimono': '着物', 'knee pad': 'ひざあて',
+    'knot': '結び目', 'lab coat': '白衣', 'ladle': 'おたま', 'lampshade': 'ランプのかさ', 'laptop': 'ノートパソコン', 'lawn mower': '芝刈り機',
+    'lens cap': 'レンズキャップ', 'letter opener': 'ペーパーナイフ', 'library': '図書館', 'lifeboat': '救命ボート', 'lighter': 'ライター',
+    'limousine': 'リムジン', 'liner': '客船', 'lipstick': '口紅', 'Loafer': 'ローファー', 'lotion': 'ローション', 'loudspeaker': 'スピーカー',
+    'loupe': 'ルーペ', 'lumbermill': '製材所', 'magnetic compass': '方位磁針', 'mailbag': '郵便かばん', 'mailbox': '郵便受け',
+    'manhole cover': 'マンホールのふた', 'maraca': 'マラカス', 'marimba': 'マリンバ', 'mask': 'マスク', 'matchstick': 'マッチ',
+    'maypole': 'メイポール（祭りの柱）', 'maze': '迷路', 'measuring cup': '計量カップ', 'medicine chest': '薬箱', 'megalith': '巨石',
+    'microphone': 'マイク', 'microwave': '電子レンジ', 'military uniform': '軍服', 'milk can': '牛乳缶', 'minibus': 'マイクロバス',
+    'miniskirt': 'ミニスカート', 'minivan': 'ミニバン', 'missile': 'ミサイル', 'mitten': 'ミトン（手袋）', 'mixing bowl': 'ボウル',
+    'mobile home': 'トレーラーハウス', 'Model T': '昔の自動車', 'modem': 'モデム', 'monastery': '修道院', 'monitor': 'モニター',
+    'moped': '原付バイク', 'mortar': 'すり鉢', 'mortarboard': '角帽', 'mosque': 'モスク', 'mosquito net': '蚊帳', 'motor scooter': 'スクーター',
+    'mountain bike': 'マウンテンバイク', 'mountain tent': 'テント', 'mouse': 'マウス', 'mousetrap': 'ネズミとり', 'moving van': '引っ越しトラック',
+    'muzzle': '犬の口輪', 'nail': 'くぎ', 'neck brace': '首のコルセット', 'necklace': 'ネックレス', 'nipple': '哺乳びんの乳首',
+    'notebook': 'ノートパソコン', 'obelisk': 'オベリスク（石の塔）', 'oboe': 'オーボエ', 'ocarina': 'オカリナ', 'odometer': '車のメーター',
+    'oil filter': 'オイルフィルター', 'organ': 'パイプオルガン', 'oscilloscope': 'オシロスコープ', 'overskirt': 'オーバースカート',
+    'oxcart': '牛車', 'oxygen mask': '酸素マスク', 'packet': '袋', 'paddle': 'パドル（かい）', 'paddlewheel': '外輪（水車）',
+    'padlock': '南京錠', 'paintbrush': '絵筆', 'pajama': 'パジャマ', 'palace': '宮殿', 'panpipe': 'パンフルート', 'paper towel': 'ペーパータオル',
+    'parachute': 'パラシュート', 'parallel bars': '平行棒', 'park bench': '公園のベンチ', 'parking meter': 'パーキングメーター',
+    'passenger car': '客車', 'patio': 'テラス', 'pay-phone': '公衆電話', 'pedestal': '台座', 'pencil box': '筆箱', 'pencil sharpener': '鉛筆削り',
+    'perfume': '香水', 'Petri dish': 'シャーレ', 'photocopier': 'コピー機', 'pick': 'ギターのピック', 'pickelhaube': 'とがったかぶと',
+    'picket fence': '木の柵', 'pickup': 'ピックアップトラック', 'pier': '桟橋', 'piggy bank': 'ブタの貯金箱', 'pill bottle': '薬のびん',
+    'pillow': 'まくら', 'ping-pong ball': 'ピンポン玉', 'pinwheel': '風車（おもちゃ）', 'pirate': '海賊船', 'pitcher': 'ピッチャー（水差し）',
+    'plane': 'かんな', 'planetarium': 'プラネタリウム', 'plastic bag': 'レジ袋', 'plate rack': '皿立て', 'plow': 'すき（畑を耕す道具）',
+    'plunger': 'ラバーカップ（トイレ用）', 'Polaroid camera': 'ポラロイドカメラ', 'pole': '棒（ポール）', 'police van': '警察の車',
+    'poncho': 'ポンチョ', 'pool table': 'ビリヤード台', 'pop bottle': 'ペットボトル', 'pot': '植木鉢', "potter's wheel": 'ろくろ',
+    'power drill': '電動ドリル', 'prayer rug': 'お祈りのじゅうたん', 'printer': 'プリンター', 'prison': '刑務所', 'projectile': 'ロケット弾',
+    'projector': 'プロジェクター', 'puck': 'アイスホッケーのパック', 'punching bag': 'サンドバッグ', 'purse': '財布', 'quill': '羽根ペン',
+    'quilt': 'ふとん', 'racer': 'レーシングカー', 'racket': 'ラケット', 'radiator': '暖房器（ラジエーター）', 'radio': 'ラジオ',
+    'radio telescope': '電波望遠鏡', 'rain barrel': '雨水のたる', 'recreational vehicle': 'キャンピングカー', 'reel': '釣りのリール',
+    'reflex camera': '一眼レフカメラ', 'refrigerator': '冷蔵庫', 'remote control': 'リモコン', 'restaurant': 'レストラン', 'revolver': 'ピストル',
+    'rifle': 'ライフル', 'rocking chair': 'ゆりいす', 'rotisserie': '回転式のグリル', 'rubber eraser': '消しゴム', 'rugby ball': 'ラグビーボール',
+    'rule': '定規', 'running shoe': '運動靴', 'safe': '金庫', 'safety pin': '安全ピン', 'saltshaker': '塩入れ', 'sandal': 'サンダル',
+    'sarong': '巻きスカート', 'sax': 'サックス', 'scabbard': '刀のさや', 'scale': 'はかり', 'school bus': 'スクールバス', 'schooner': '帆船',
+    'scoreboard': '得点板', 'screen': '画面', 'screw': 'ねじ', 'screwdriver': 'ドライバー', 'seat belt': 'シートベルト', 'sewing machine': 'ミシン',
+    'shield': 'たて', 'shoe shop': '靴屋', 'shoji': '障子', 'shopping basket': '買い物かご', 'shopping cart': 'ショッピングカート',
+    'shovel': 'スコップ', 'shower cap': 'シャワーキャップ', 'shower curtain': 'シャワーカーテン', 'ski': 'スキー板', 'ski mask': '目出し帽',
+    'sleeping bag': '寝袋', 'slide rule': '計算尺', 'sliding door': '引き戸', 'slot': 'スロットマシン', 'snorkel': 'シュノーケル',
+    'snowmobile': 'スノーモービル', 'snowplow': '除雪車', 'soap dispenser': 'ハンドソープの容器', 'soccer ball': 'サッカーボール',
+    'sock': 'くつした', 'solar dish': '太陽の光を集める装置', 'sombrero': 'ソンブレロ（帽子）', 'soup bowl': 'スープ皿', 'space bar': 'スペースキー',
+    'space heater': '電気ストーブ', 'space shuttle': 'スペースシャトル', 'spatula': 'フライ返し', 'speedboat': 'モーターボート',
+    'spider web': 'クモの巣', 'spindle': '糸を巻く棒', 'sports car': 'スポーツカー', 'spotlight': 'スポットライト', 'stage': '舞台',
+    'steam locomotive': '蒸気機関車', 'steel arch bridge': 'アーチ橋', 'steel drum': 'スチールドラム', 'stethoscope': '聴診器',
+    'stole': 'ストール（肩かけ）', 'stone wall': '石垣', 'stopwatch': 'ストップウォッチ', 'stove': 'コンロ', 'strainer': 'こし器',
+    'streetcar': '路面電車', 'stretcher': '担架', 'studio couch': 'ソファー', 'stupa': '仏塔', 'submarine': '潜水艦', 'suit': 'スーツ',
+    'sundial': '日時計', 'sunglass': 'サングラス', 'sunglasses': 'サングラス', 'sunscreen': '日焼け止め', 'suspension bridge': 'つり橋',
+    'swab': 'モップ', 'sweatshirt': 'トレーナー', 'swimming trunks': '海水パンツ', 'swing': 'ブランコ', 'switch': 'スイッチ',
+    'syringe': '注射器', 'table lamp': '電気スタンド', 'tank': '戦車', 'tape player': 'テープレコーダー', 'teapot': 'ティーポット',
+    'teddy': 'テディベア', 'television': 'テレビ', 'tennis ball': 'テニスボール', 'thatch': 'かやぶき屋根', 'theater curtain': '劇場の幕',
+    'thimble': '指ぬき', 'thresher': '脱穀機', 'throne': '王座', 'tile roof': '瓦屋根', 'toaster': 'トースター', 'tobacco shop': 'たばこ屋',
+    'toilet seat': '便座', 'torch': 'たいまつ', 'totem pole': 'トーテムポール', 'tow truck': 'レッカー車', 'toyshop': 'おもちゃ屋',
+    'tractor': 'トラクター', 'trailer truck': '大型トラック', 'tray': 'おぼん', 'trench coat': 'トレンチコート', 'tricycle': '三輪車',
+    'trimaran': '三胴船', 'tripod': '三脚', 'triumphal arch': '凱旋門', 'trolleybus': 'トロリーバス', 'trombone': 'トロンボーン', 'tub': 'おけ',
+    'turnstile': '回転式の改札', 'typewriter keyboard': 'タイプライター', 'umbrella': '傘', 'unicycle': '一輪車', 'upright': 'ピアノ',
+    'vacuum': '掃除機', 'vase': '花びん', 'vault': 'アーチ形の天井', 'velvet': 'ビロード（布）', 'vending machine': '自動販売機',
+    'vestment': '神父の服', 'viaduct': '高架橋', 'violin': 'バイオリン', 'volleyball': 'バレーボール', 'waffle iron': 'ワッフル焼き器',
+    'wall clock': '掛け時計', 'wallet': '財布', 'wardrobe': '洋服だんす', 'warplane': '軍用機', 'washbasin': '洗面台', 'washer': '洗濯機',
+    'water bottle': '水筒・ペットボトル', 'water jug': '水差し', 'water tower': '給水塔', 'whiskey jug': '酒のつぼ', 'whistle': '笛', 'wig': 'かつら',
+    'window screen': '網戸', 'window shade': 'ブラインド', 'Windsor tie': 'ネクタイ', 'wine bottle': 'ワインのびん', 'wing': '飛行機のつばさ',
+    'wok': '中華鍋', 'wooden spoon': '木のスプーン', 'wool': '毛糸', 'worm fence': 'ジグザグの木の柵', 'wreck': '難破船', 'yawl': 'ヨット',
+    'yurt': 'ゲル（移動式の家）',
+    // 画面・食べ物・景色・人・植物（916〜999）
+    'web site': 'Webサイト', 'comic book': 'マンガ本', 'crossword puzzle': 'クロスワードパズル', 'street sign': '道路標識',
+    'traffic light': '信号機', 'book jacket': '本のカバー', 'menu': 'メニュー', 'plate': '皿', 'guacamole': 'ワカモレ（アボカドのディップ）',
+    'consomme': 'コンソメスープ', 'hot pot': '鍋料理', 'trifle': 'トライフル（お菓子）', 'ice cream': 'アイスクリーム', 'ice lolly': 'アイスキャンディー',
+    'French loaf': 'フランスパン', 'bagel': 'ベーグル', 'pretzel': 'プレッツェル', 'cheeseburger': 'チーズバーガー', 'hotdog': 'ホットドッグ',
+    'mashed potato': 'マッシュポテト', 'head cabbage': 'キャベツ', 'broccoli': 'ブロッコリー', 'cauliflower': 'カリフラワー', 'zucchini': 'ズッキーニ',
+    'spaghetti squash': 'そうめんかぼちゃ', 'acorn squash': 'どんぐりかぼちゃ', 'butternut squash': 'バターナッツかぼちゃ', 'cucumber': 'きゅうり',
+    'artichoke': 'アーティチョーク', 'bell pepper': 'ピーマン', 'cardoon': 'カルドン（野菜）', 'mushroom': 'キノコ', 'Granny Smith': '青りんご',
+    'strawberry': 'いちご', 'orange': 'オレンジ', 'lemon': 'レモン', 'fig': 'いちじく', 'pineapple': 'パイナップル', 'banana': 'バナナ',
+    'jackfruit': 'ジャックフルーツ', 'custard apple': 'カスタードアップル（果物）', 'pomegranate': 'ざくろ', 'hay': '干し草',
+    'carbonara': 'カルボナーラ', 'chocolate sauce': 'チョコレートソース', 'dough': 'パン生地', 'meat loaf': 'ミートローフ', 'pizza': 'ピザ',
+    'potpie': 'ポットパイ', 'burrito': 'ブリトー', 'red wine': '赤ワイン', 'espresso': 'エスプレッソ', 'cup': 'カップ',
+    'eggnog': 'エッグノッグ（飲み物）', 'alp': '高い山', 'bubble': 'しゃぼん玉', 'cliff': 'がけ', 'coral reef': 'サンゴ礁', 'geyser': '間欠泉',
+    'lakeside': '湖のほとり', 'promontory': '岬', 'sandbar': '砂州', 'seashore': '海岸', 'valley': '谷', 'volcano': '火山',
+    'ballplayer': '野球選手', 'groom': '花婿', 'scuba diver': 'ダイバー', 'rapeseed': '菜の花', 'daisy': 'ヒナギク',
+    "yellow lady's slipper": 'アツモリソウ（花）', 'corn': 'トウモロコシ', 'acorn': 'どんぐり', 'hip': 'ローズヒップ（バラの実）',
+    'buckeye': 'トチの実', 'coral fungus': 'ホウキタケ（キノコ）', 'agaric': 'ハラタケ（キノコ）', 'gyromitra': 'シャグマアミガサタケ（キノコ）',
+    'stinkhorn': 'スッポンタケ（キノコ）', 'earthstar': 'ツチグリ（キノコ）', 'hen-of-the-woods': 'マイタケ', 'bolete': 'ポルチーニ（キノコ）',
+    'ear': 'トウモロコシの穂', 'toilet tissue': 'トイレットペーパー',
+};
+// 英語の名前が同じで中身がちがう種類は、AIの答えの番号で分ける
+const JA_BY_INDEX = { 134: 'ツル（鳥）', 517: 'クレーン', 638: 'レオタード', 639: '水着' };
+const nameOf = (c) => JA_BY_INDEX[c.index] || JA[c.categoryName] || c.categoryName;
+
+const $ = (id) => document.getElementById(id);
+const view = $('view'), vctx = view.getContext('2d', { willReadFrequently: true });
+const src = document.createElement('canvas'); src.width = src.height = 448;   // 正方形に切り抜いた元の写真
+const sctx = src.getContext('2d');
+const work = document.createElement('canvas'); work.width = work.height = 448; // 回転したもの
+const wctx = work.getContext('2d');
+const small = document.createElement('canvas');                                 // マスの数に縮めたもの
+const smctx = small.getContext('2d', { willReadFrequently: true });
+const video = $('cam');
+let classifier = null, hasImage = false, live = false, busy = false, queued = false, noiseSeed = 1, looking = false, resumeAfterLook = false;
+const heat = $('heat'), hctx = heat.getContext('2d');
+const EMBED = document.documentElement.classList.contains('embed');   // スライドの中では文を短くする
+
+// 元の写真：まだ何もないときは、色のついた見本を描いておく
+function drawSample() {
+    const g = sctx.createLinearGradient(0, 0, 448, 448);
+    g.addColorStop(0, '#fff5e8'); g.addColorStop(1, '#ffe76a');
+    sctx.fillStyle = g; sctx.fillRect(0, 0, 448, 448);
+    sctx.fillStyle = '#f57c00'; sctx.beginPath(); sctx.arc(224, 240, 120, 0, Math.PI * 2); sctx.fill();
+    sctx.fillStyle = '#1e1e1e'; sctx.font = '900 34px "Zen Maru Gothic"'; sctx.textAlign = 'center';
+    sctx.fillText('カメラか画像を使おう', 224, 70);
+}
+drawSample();
+
+function cropTo(srcEl, w, h, mirror) {
+    const s = Math.min(w, h), sx = (w - s) / 2, sy = (h - s) / 2;
+    sctx.save();
+    if (mirror) { sctx.translate(448, 0); sctx.scale(-1, 1); }
+    sctx.drawImage(srcEl, sx, sy, s, s, 0, 0, 448, 448);
+    sctx.restore();
+}
+
+// 疑似乱数（スライダーを動かしてもノイズの模様が毎回変わりすぎないように）
+function rand() { noiseSeed = (noiseSeed * 16807) % 2147483647; return noiseSeed / 2147483647; }
+
+function render() {
+    if (looking) return;
+    clearHeat();
+    const n = RES[+$('res').value], rot = +$('rot').value, bri = +$('bri').value, noise = +$('noise').value / 100, gray = $('gray').checked;
+    $('vRes').textContent = `${n} × ${n}`; $('vRot').textContent = `${rot}°`; $('vBri').textContent = (bri > 0 ? '+' : '') + bri; $('vNoise').textContent = `${Math.round(noise * 100)}%`;
+    // 1) 回転（すきまは灰色）
+    wctx.fillStyle = '#808080'; wctx.fillRect(0, 0, 448, 448);
+    wctx.save(); wctx.translate(224, 224); wctx.rotate(rot * Math.PI / 180); wctx.drawImage(src, -224, -224); wctx.restore();
+    // 2) n × n マスに縮める（1マス＝その範囲の色の平均）
+    small.width = small.height = n;
+    smctx.imageSmoothingEnabled = true; smctx.imageSmoothingQuality = 'high';
+    smctx.drawImage(work, 0, 0, n, n);
+    // 3) 224 × 224 に引き伸ばす（マスの形のまま）
+    vctx.imageSmoothingEnabled = false;
+    vctx.drawImage(small, 0, 0, 224, 224);
+    // 4) 明るさ・白黒・ノイズ
+    const img = vctx.getImageData(0, 0, 224, 224), d = img.data;
+    noiseSeed = 12345;
+    for (let i = 0; i < d.length; i += 4) {
+        let r = d[i] + bri * 1.6, g = d[i + 1] + bri * 1.6, b = d[i + 2] + bri * 1.6;
+        if (gray) { const y = 0.299 * r + 0.587 * g + 0.114 * b; r = g = b = y; }
+        if (noise > 0) {
+            if (rand() < noise) { const v = rand() * 255; if (gray) { r = g = b = v; } else { r = rand() * 255; g = rand() * 255; b = v; } }
+        }
+        d[i] = r; d[i + 1] = g; d[i + 2] = b;
+    }
+    vctx.putImageData(img, 0, 0);
+    classify();
+}
+
+function classify() {
+    if (!classifier || !hasImage) return;
+    if (busy) { queued = true; return; }
+    busy = true;
+    try {
+        const res = classifier.classify(view);
+        const cats = (res.classifications[0]?.categories || []).slice(0, 5);   // 1000種類ぶん返ってくるので上位5つだけ
+        showBars(cats);
+        $('aiStatus').textContent = '';
+    } catch (e) {
+        $('aiStatus').textContent = 'AIの計算でエラーが出ました：' + e.message; $('aiStatus').className = 'status err';
+    }
+    busy = false;
+    if (queued) { queued = false; requestAnimationFrame(classify); }
+}
+
+function showBars(cats) {
+    const bars = $('bars');
+    if (bars.children.length !== 5) {
+        bars.innerHTML = '';
+        for (let i = 0; i < 5; i++) bars.insertAdjacentHTML('beforeend', '<div class="bar"><span class="w"></span><span class="v"></span><span class="b"><i></i></span></div>');
+    }
+    [...bars.children].forEach((el, i) => {
+        const c = cats[i];
+        el.classList.toggle('top', i === 0);
+        if (!c || c.score < 0.0005) { el.querySelector('.w').textContent = '—'; el.querySelector('.v').textContent = ''; el.querySelector('i').style.width = '0'; return; }
+        el.querySelector('.w').textContent = nameOf(c);
+        el.querySelector('.v').textContent = (c.score * 100).toFixed(1) + '%';
+        el.querySelector('i').style.width = Math.max(1, c.score * 100) + '%';
+    });
+}
+
+// カメラ
+async function startCam() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { width: 1280, height: 720 }, audio: false });
+        video.srcObject = stream; await video.play();
+        live = true; hasImage = true; $('btnShot').disabled = false; $('btnShot').textContent = '撮る';
+        $('btnCam').textContent = 'カメラを止める'; $('btnCam').classList.remove('primary');
+        $('camStatus').textContent = '映像をそのまま見ています。「撮る」で止めると、じっくり比べられます。';
+        loop();
+    } catch (e) {
+        $('camStatus').textContent = 'カメラが使えませんでした（' + e.name + '）。ブラウザのカメラの許可を確かめるか、「画像を開く」を使ってください。';
+        $('camStatus').className = 'status err';
+    }
+}
+function stopCam() {
+    const s = video.srcObject; if (s) s.getTracks().forEach((t) => t.stop());
+    video.srcObject = null; live = false; $('btnShot').disabled = true;
+    $('btnCam').textContent = 'カメラを使う'; $('btnCam').classList.add('primary');
+}
+let last = 0;
+function loop(t = 0) {
+    if (!live) return;
+    if (t - last > 120 && video.videoWidth) { last = t; cropTo(video, video.videoWidth, video.videoHeight, true); render(); }
+    requestAnimationFrame(loop);
+}
+$('btnCam').onclick = () => (video.srcObject ? stopCam() : startCam());
+$('btnShot').onclick = () => {
+    if (live) { live = false; $('btnShot').textContent = 'もう一度'; $('camStatus').textContent = '止めました。スライダーで画像を変えてみよう。'; }
+    else { live = true; $('btnShot').textContent = '撮る'; loop(); }
+};
+$('file').onchange = (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    const im = new Image();
+    im.onload = () => { if (video.srcObject) stopCam(); cropTo(im, im.naturalWidth, im.naturalHeight, false); hasImage = true; render(); URL.revokeObjectURL(im.src); };
+    im.src = URL.createObjectURL(f);
+};
+['res', 'noise', 'rot', 'bri', 'gray'].forEach((id) => $(id).addEventListener('input', render));
+$('btnReset').onclick = () => { $('res').value = 7; $('noise').value = 0; $('rot').value = 0; $('bri').value = 0; $('gray').checked = false; render(); };
+
+// マスの色の数字
+view.addEventListener('mousemove', (e) => {
+    const r = view.getBoundingClientRect();
+    const x = Math.floor((e.clientX - r.left) / r.width * 224), y = Math.floor((e.clientY - r.top) / r.height * 224);
+    const p = vctx.getImageData(Math.min(223, x), Math.min(223, y), 1, 1).data;
+    $('sw').style.background = `rgb(${p[0]},${p[1]},${p[2]})`;
+    $('pr').textContent = 'R ' + p[0]; $('pg').textContent = 'G ' + p[1]; $('pb').textContent = 'B ' + p[2];
+    const n = RES[+$('res').value];
+    $('pxNote').textContent = `1マス＝赤・緑・青の3つの数字（0〜255）。いま ${n}×${n}＝${(n * n).toLocaleString()} マス`;
+});
+
+// ---------- 4 AIが見ている場所：一部を隠して分類し直し、1位の確率がどれだけ下がるかを地図にする ----------
+let occN = 7;
+function clearHeat() { hctx.clearRect(0, 0, 224, 224); $('btnClear').disabled = true; }
+function drawHeat(drops, n, cur) {
+    const cell = 224 / n, mx = Math.max(...drops, 1e-6);
+    hctx.clearRect(0, 0, 224, 224);
+    drops.forEach((d, k) => {
+        hctx.fillStyle = `rgba(214, 40, 40, ${(0.75 * d / mx).toFixed(3)})`;
+        hctx.fillRect((k % n) * cell, Math.floor(k / n) * cell, cell, cell);
+    });
+    if (cur >= 0) {   // いま隠している四角
+        const x = (cur % n) * cell, y = Math.floor(cur / n) * cell;
+        hctx.fillStyle = '#808080'; hctx.fillRect(x, y, cell, cell);
+        hctx.lineWidth = 2; hctx.strokeStyle = '#1e1e1e'; hctx.strokeRect(x + 1, y + 1, cell - 2, cell - 2);
+    }
+}
+async function look() {
+    if (!classifier || !hasImage || looking) return;
+    // 調べるあいだは映像を止める（カメラで映していたら、「消す」で映像に戻す）
+    resumeAfterLook = live;
+    if (live) { live = false; $('btnShot').textContent = 'もう一度'; $('camStatus').textContent = '調べるあいだ、映像を止めました。「消す」で映像に戻ります。'; }
+    looking = true; $('btnLook').disabled = true; $('btnClear').disabled = true;
+    const n = occN, cell = 224 / n, occ = document.createElement('canvas'), octx = occ.getContext('2d');
+    occ.width = occ.height = 224;
+    const top = classifier.classify(view).classifications[0].categories[0], p0 = top.score, drops = [];
+    for (let k = 0; k < n * n; k++) {
+        octx.drawImage(view, 0, 0);
+        octx.fillStyle = '#808080'; octx.fillRect((k % n) * cell, Math.floor(k / n) * cell, cell, cell);
+        const c = classifier.classify(occ).classifications[0].categories.find((x) => x.index === top.index);
+        const p = c ? c.score : 0;
+        drops.push(Math.max(0, p0 - p));
+        drawHeat(drops, n, k);
+        $('lookMeter').innerHTML = (EMBED ? `隠して <b>${k + 1}</b>/${n * n} 回目：` : `隠して分類 <b>${k + 1}</b> / ${n * n} 回目：「${nameOf(top)}」`)
+            + `<b>${(p0 * 100).toFixed(1)}%</b> → <b>${(p * 100).toFixed(1)}%</b>`;
+        await new Promise((r) => requestAnimationFrame(r));
+    }
+    drawHeat(drops, n, -1);
+    const mx = Math.max(...drops);
+    $('lookMeter').innerHTML = EMBED ? `${n * n} 回 分類：最大 <b>−${(mx * 100).toFixed(1)}</b> ポイント`
+        : `${n * n} 回 分類し直した：「${nameOf(top)}」が最大 <b>${(mx * 100).toFixed(1)}</b> ポイント下がった`
+          + (mx < 0.05 ? '（ほとんど変わらない）' : '');
+    looking = false; $('btnLook').disabled = false; $('btnClear').disabled = false;
+}
+[...$('occ').children].forEach((b) => (b.onclick = () => {
+    occN = +b.dataset.n; [...$('occ').children].forEach((x) => x.classList.toggle('on', x === b));
+}));
+$('btnLook').onclick = look;
+$('btnClear').onclick = () => {
+    clearHeat(); $('lookMeter').textContent = '写真を用意してから「調べる」';
+    if (resumeAfterLook && video.srcObject) {   // 調べる前にカメラで映していたら、映像に戻す
+        live = true; $('btnShot').textContent = '撮る'; $('camStatus').textContent = '映像をそのまま見ています。「撮る」で止めると、じっくり比べられます。'; loop();
+    }
+    resumeAfterLook = false;
+};
+
+render();
+try {
+    const fileset = await FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.1.0/wasm');
+    classifier = await ImageClassifier.createFromOptions(fileset, {
+        baseOptions: { modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/image_classifier/efficientnet_lite0/int8/latest/efficientnet_lite0.tflite' },
+        runningMode: 'IMAGE', maxResults: -1,   // 1000種類すべての確率（AIが見ている場所で、1位の確率を追うため）
+    });
+    $('aiStatus').textContent = 'AIの準備ができました。カメラを使うか、画像を開いてください。';
+    if (hasImage) render();
+} catch (e) {
+    $('aiStatus').textContent = 'AIを読み込めませんでした（インターネットの接続を確かめてください）：' + e.message;
+    $('aiStatus').className = 'status err';
+}
+</script>
+</body>
+</html>

@@ -12,3 +12,12 @@
 - ノートブックの API を使うページ（3・5・6・7）には、OpenAI の APIキーが要ります。キーはノートブックの 0-2 で入力し、ファイルには書きません。
 - 体験ページ（アプリの 1・2・4）は無料です。カメラとマイクを使います。
 - モデル名・料金は2026年10月時点のものです。
+
+### 体験ページ
+
+| もの | 開き方 |
+|---|---|
+| 体験ページの一覧 | [ブラウザで開く](https://usa-tks.github.io/cyber-agent-course/image-speech-demos/) |
+| 体験1 画像とピクセル・画像分類 | [ブラウザで開く](https://usa-tks.github.io/cyber-agent-course/image-speech-demos/1_image_classification.html) |
+| 体験2 手と体の検出 | [ブラウザで開く](https://usa-tks.github.io/cyber-agent-course/image-speech-demos/2_hand_body_detection.html) |
+| 体験3 音の波形とスペクトログラム | [ブラウザで開く](https://usa-tks.github.io/cyber-agent-course/image-speech-demos/3_sound_waveform.html) |

@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>音の波形とスペクトログラム</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500&family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
+<script>
+/* スライドの中（iframe）で開かれたときは、見出しと説明を隠し、← → をスライドの移動に回す */
+if (window.parent !== window || location.search.includes('embed')) {
+    document.documentElement.classList.add('embed');
+    window.addEventListener('keydown', (e) => {
+        if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+        e.preventDefault();
+        window.parent.postMessage(e.key === 'ArrowRight' ? 'demo:next' : 'demo:prev', '*');
+    }, true);
+}
+</script>
+<style>
+:root {
+    --bg: #ffffff; --ink: #1e1e1e; --muted: #555555; --dim: #9a9a9a;
+    --accent: #f57c00; --accent-strong: #d35400; --accent-soft: #fff5e8; --hl: #ffe76a;
+    --line: #e9e9e6; --panel: #f6f6f3; --radius: 18px;
+    --font: 'Zen Maru Gothic', sans-serif; --mono: 'JetBrains Mono', 'Zen Maru Gothic', monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font); font-weight: 500; font-size: 16px; line-height: 1.5; }
+header { display: flex; align-items: center; gap: 18px; padding: 14px 24px; border-bottom: 2px solid var(--line); flex-wrap: wrap; }
+header h1 { font-size: 24px; font-weight: 900; background: linear-gradient(transparent 60%, var(--hl) 60%, var(--hl) 92%, transparent 92%); padding: 0 4px; }
+header .tag { padding: 4px 12px; border-radius: 999px; background: var(--accent); color: #fff; font-size: 14px; font-weight: 900; }
+header .note { margin-left: auto; font-size: 14px; color: var(--muted); }
+main { display: grid; grid-template-columns: 1fr 1.1fr; gap: 20px; padding: 16px 24px 24px; align-items: start; }
+h2 .btns button, h2 .btns label.file { padding: 6px 12px; }
+@media (max-width: 1100px) { main { grid-template-columns: 1fr; } }
+section.panel { background: var(--panel); border-radius: var(--radius); padding: 14px 18px; }
+h2 { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 900; margin-bottom: 10px; flex-wrap: wrap; }
+h2 .n { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 15px; }
+h2 .btns { margin-left: auto; }
+.btns { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+button, label.file { font-family: var(--font); font-size: 15px; font-weight: 900; padding: 7px 16px; border-radius: 999px; border: 2px solid var(--ink); background: #fff; color: var(--ink); cursor: pointer; }
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button:disabled { opacity: .4; cursor: default; }
+label.file input { display: none; }
+.box { margin-top: 10px; background: #fff; border-radius: 12px; border: 2px solid var(--line); padding: 8px 10px 6px; }
+.box .cap { display: flex; justify-content: space-between; align-items: baseline; font-size: 14px; font-weight: 900; margin-bottom: 4px; }
+.box .cap span { font-weight: 700; color: var(--muted); }
+.box .cap .long { font-size: inherit; }
+canvas { display: block; width: 100%; }
+.ctrls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 16px; margin-top: 10px; }
+.ctrl .row { display: flex; justify-content: space-between; align-items: baseline; font-weight: 700; font-size: 15px; }
+.ctrl .row b { font-family: var(--mono); font-size: 14px; color: var(--accent-strong); }
+select { width: 100%; margin-top: 4px; padding: 6px 8px; font-family: var(--font); font-size: 15px; font-weight: 700; border: 2px solid var(--ink); border-radius: 10px; background: #fff; }
+.rates { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.rates button { padding: 6px 12px; font-family: var(--mono); font-weight: 500; font-size: 14px; }
+.rates button.on { background: var(--ink); border-color: var(--ink); color: #fff; }
+.status { margin-top: 8px; font-size: 14px; color: var(--muted); }
+.status.err { color: #c0392b; font-weight: 700; }
+.tips { margin-top: 10px; display: grid; gap: 6px; }
+.tips li { list-style: none; display: flex; gap: 8px; font-size: 15px; }
+.tips li b { flex: none; display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--ink); color: #fff; font-size: 13px; }
+/* 絵の高さは画面の高さに合わせる（下にスクロールしなくてよいように）。描く細かさは JS で画面の大きさの2倍にそろえる */
+#wave { height: clamp(40px, calc((100vh - 510px) * .2), 120px); }
+#spec { height: clamp(140px, calc((100vh - 510px) * .8), 440px); }
+#zoom { height: clamp(44px, calc((100vh - 440px) * .2), 130px); }
+#recSpec { height: clamp(90px, calc((100vh - 440px) * .42), 300px); }
+#col { height: clamp(90px, calc((100vh - 440px) * .38), 260px); }
+#recSpec { cursor: crosshair; }
+
+/* スライドの中に入れたとき（遠くからも読めるように、字を大きくして表示を絞る）
+   いまの波形・表示の設定・数字の札・説明は隠し、目盛りの字は描くときに大きくする */
+html.embed header, html.embed .tips, html.embed .status:not(.err), html.embed #waveBox, html.embed .ctrls, html.embed label.file, html.embed .cap .long, html.embed #colBox { display: none; }
+html.embed main { grid-template-columns: 1fr 1.2fr; padding: 12px 14px; gap: 14px; }
+html.embed section.panel { padding: 10px 14px; }
+html.embed h2 { margin-bottom: 6px; font-size: 22px; }
+html.embed h2 .n { width: 30px; height: 30px; font-size: 18px; }
+html.embed h2 .btns button { padding: 5px 14px; font-size: 19px; }
+html.embed .box { margin-top: 6px; padding: 4px 8px; }
+html.embed .box .cap { margin-bottom: 2px; font-size: 19px; }
+html.embed .ctrl .row, html.embed .ctrl .row b { font-size: 19px; }
+html.embed .rates { margin-top: 4px; gap: 5px; }
+html.embed .rates button { padding: 4px 10px; font-size: 19px; }
+html.embed #spec { height: 392px; }
+html.embed #zoom { height: 92px; }
+html.embed #recSpec { height: 172px; }
+</style>
+</head>
+<body>
+<header>
+    <span class="tag">体験3</span>
+    <h1>音の波形とスペクトログラム</h1>
+    <span class="note">マイクの音はこのパソコンの中だけで使われます（外には送りません）</span>
+</header>
+<main>
+    <section class="panel">
+        <h2><span class="n">1</span>いまの音を見る<span class="btns"><button id="btnMic" class="primary">マイクを使う</button><button id="btnPause" disabled>止める</button></span></h2>
+        <div class="box" id="waveBox">
+            <div class="cap">波形（空気のふるえ）<span>いまの約 0.02 秒ぶん</span></div>
+            <canvas id="wave" width="1200" height="180"></canvas>
+        </div>
+        <div class="box">
+            <div class="cap"><b>スペクトログラム<small class="long">（横＝時間、たて＝音の高さ、濃さ＝音の強さ）</small></b><span>右がいま</span></div>
+            <canvas id="spec" width="1200" height="420"></canvas>
+        </div>
+        <div class="ctrls">
+            <div class="ctrl"><div class="row">表示する高さの上限</div>
+                <select id="maxHz"><option value="4000">4,000 Hz</option><option value="8000" selected>8,000 Hz</option><option value="16000">16,000 Hz</option></select></div>
+            <div class="ctrl"><div class="row">模様の細かさ</div>
+                <select id="fft"><option value="512">時間が細かい（512）</option><option value="2048" selected>ふつう（2048）</option><option value="8192">高さが細かい（8192）</option></select></div>
+        </div>
+        <p class="status" id="micStatus">「マイクを使う」を押して、声を出してみよう。</p>
+        <ul class="tips">
+            <li><b>1</b>「あ・い・う・え・お」と言って、模様を比べる</li>
+            <li><b>2</b>口笛・手拍子・「しー」は、どんな模様？</li>
+            <li><b>3</b>名前を録音して測る回数を下げる。何 Hz で聞き取れない？</li>
+            <li><b>4</b>録音した模様をクリックして、1列の作り方を見る</li>
+        </ul>
+    </section>
+
+    <section class="panel">
+        <h2><span class="n">2</span>録音して、測る回数を変える<span class="btns"><button id="btnRec" class="primary">3秒録音する</button><button id="btnPlay" disabled>聞く</button><label class="file">ファイル<input id="file" type="file" accept="audio/*"></label></span></h2>
+        <div class="ctrl"><div class="row">サンプリングレート（1秒に何回測るか）<b id="vRate">—</b></div>
+            <div class="rates" id="rates"></div></div>
+        <div class="box">
+            <div class="cap">拡大した波形（点＝1回の測定）<span id="zoomNote">0.005 秒ぶん</span></div>
+            <canvas id="zoom" width="1200" height="200"></canvas>
+        </div>
+        <div class="box">
+            <div class="cap">録音した音のスペクトログラム<span>0〜8,000 Hz</span></div>
+            <canvas id="recSpec" width="1200" height="360"></canvas>
+        </div>
+        <div class="box" id="colBox">
+            <div class="cap">模様の1列はこう作る<span id="colAt">上の模様をクリック</span></div>
+            <canvas id="col" width="1200" height="330"></canvas>
+        </div>
+        <p class="status" id="recStatus">録音すると、ここに出ます。</p>
+    </section>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const RATES = [48000, 16000, 8000, 4000, 3000];
+let ac = null, analyser = null, micStream = null, paused = false;
+let clip = null, clipRate = 48000, curRate = 48000, curData = null;
+
+// 色（静か＝白 → 黄 → オレンジ → 濃い茶色＝強い）
+const STOPS = [[255, 255, 255], [255, 231, 106], [245, 124, 0], [120, 40, 0], [30, 30, 30]];
+function color(v) {   // v: 0〜1
+    v = Math.max(0, Math.min(1, v)) * (STOPS.length - 1);
+    const i = Math.min(STOPS.length - 2, Math.floor(v)), t = v - i, a = STOPS[i], b = STOPS[i + 1];
+    return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+}
+// スライドの中（EMBED）では、目盛りの字と線を大きく描く
+const EMBED = document.documentElement.classList.contains('embed');
+function fitCanvases() {   // 絵の細かさを、画面に出る大きさの2倍にそろえる（字や線が伸び縮みしないように）
+    for (const id of ['wave', 'spec', 'zoom', 'recSpec', 'col']) {
+        const c = $(id);
+        if (c.clientWidth) { c.width = Math.round(c.clientWidth * 2); c.height = Math.round(c.clientHeight * 2); }
+    }
+}
+fitCanvases();
+const AXIS = EMBED ? 110 : 84, AF = EMBED ? 44 : 28, K = EMBED ? 1.6 : 1;   // 左の目盛りの幅、目盛りの字の大きさ、線と点の太さ
+const rateLabel = (r, i) => r.toLocaleString() + (i === 0 && !EMBED ? '（元）' : '');   // 単位の Hz は上の数字に出る
+function drawAxis(ctx, h, maxHz, top = 0) {
+    ctx.fillStyle = '#fff'; ctx.fillRect(0, top, AXIS, h);
+    ctx.fillStyle = '#555'; ctx.font = `500 ${AF}px "JetBrains Mono", monospace`; ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+    const step = maxHz <= 4000 ? 1000 : maxHz <= 8000 ? 2000 : 4000;
+    for (let f = 0; f <= maxHz; f += step) {
+        const y = top + h - (f / maxHz) * h;
+        ctx.fillText(f >= 1000 ? (f / 1000) + 'k' : f, AXIS - 10, Math.min(top + h - AF * 0.4, Math.max(top + AF * 0.45, y)));
+        ctx.fillRect(AXIS - 6, Math.round(y), 6, 1);
+    }
+    ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+}
+
+// ---------- 1. いまの音 ----------
+const wave = $('wave'), wctx = wave.getContext('2d');
+const spec = $('spec'), sctx = spec.getContext('2d');
+function clearLive() {
+    wctx.fillStyle = '#fff'; wctx.fillRect(0, 0, wave.width, wave.height);
+    wctx.strokeStyle = '#e9e9e6'; wctx.lineWidth = 2; wctx.beginPath(); wctx.moveTo(0, wave.height / 2); wctx.lineTo(wave.width, wave.height / 2); wctx.stroke();
+    sctx.fillStyle = '#fff'; sctx.fillRect(0, 0, spec.width, spec.height);
+    drawAxis(sctx, spec.height, +$('maxHz').value);
+}
+clearLive();
+
+async function startMic() {
+    try {
+        micStream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+        ac = ac || new AudioContext();
+        await ac.resume();
+        analyser = ac.createAnalyser(); analyser.fftSize = +$('fft').value; analyser.smoothingTimeConstant = 0;
+        analyser.minDecibels = -100; analyser.maxDecibels = -25;
+        ac.createMediaStreamSource(micStream).connect(analyser);
+        $('btnMic').textContent = 'マイクを止める'; $('btnMic').classList.remove('primary'); $('btnPause').disabled = false;
+        $('micStatus').textContent = `マイクの音を 1秒に ${ac.sampleRate.toLocaleString()} 回 測っています。`;
+        $('micStatus').className = 'status';
+        clearLive(); paused = false; liveLoop();
+    } catch (e) {
+        $('micStatus').textContent = 'マイクが使えませんでした（' + e.name + '）。ブラウザのマイクの許可を確かめてください。'; $('micStatus').className = 'status err';
+    }
+}
+function stopMic() {
+    if (micStream) micStream.getTracks().forEach((t) => t.stop());
+    micStream = null; analyser = null;
+    $('btnMic').textContent = 'マイクを使う'; $('btnMic').classList.add('primary'); $('btnPause').disabled = true;
+}
+function liveLoop() {
+    if (!analyser) return;
+    if (!paused) {
+        // 波形
+        const n = Math.min(analyser.fftSize, Math.round(ac.sampleRate * 0.02));
+        const td = new Float32Array(analyser.fftSize); analyser.getFloatTimeDomainData(td);
+        wctx.fillStyle = '#fff'; wctx.fillRect(0, 0, wave.width, wave.height);
+        wctx.strokeStyle = '#e9e9e6'; wctx.lineWidth = 2; wctx.beginPath(); wctx.moveTo(0, wave.height / 2); wctx.lineTo(wave.width, wave.height / 2); wctx.stroke();
+        wctx.strokeStyle = '#1e1e1e'; wctx.lineWidth = 3; wctx.beginPath();
+        for (let i = 0; i < n; i++) {
+            const x = i / (n - 1) * wave.width, y = wave.height / 2 - td[td.length - n + i] * wave.height * 1.6;
+            i ? wctx.lineTo(x, y) : wctx.moveTo(x, y);
+        }
+        wctx.stroke();
+        // スペクトログラム（左へずらして、右端に今の列を描く）
+        const fd = new Float32Array(analyser.frequencyBinCount); analyser.getFloatFrequencyData(fd);
+        const colW = 3, maxHz = +$('maxHz').value, binHz = ac.sampleRate / analyser.fftSize;
+        sctx.drawImage(spec, AXIS + colW, 0, spec.width - AXIS - colW, spec.height, AXIS, 0, spec.width - AXIS - colW, spec.height);
+        const img = sctx.createImageData(colW, spec.height);
+        for (let y = 0; y < spec.height; y++) {
+            const f = (1 - y / spec.height) * maxHz, k = Math.min(fd.length - 1, Math.round(f / binHz));
+            const v = (fd[k] - analyser.minDecibels) / (analyser.maxDecibels - analyser.minDecibels);
+            const c = color(v);
+            for (let x = 0; x < colW; x++) { const o = (y * colW + x) * 4; img.data[o] = c[0]; img.data[o + 1] = c[1]; img.data[o + 2] = c[2]; img.data[o + 3] = 255; }
+        }
+        sctx.putImageData(img, spec.width - colW, 0);
+    }
+    requestAnimationFrame(liveLoop);
+}
+$('btnMic').onclick = () => (micStream ? stopMic() : startMic());
+$('btnPause').onclick = () => { paused = !paused; $('btnPause').textContent = paused ? '再開' : '止める'; };
+$('maxHz').onchange = () => { clearLive(); };
+$('fft').onchange = () => { if (analyser) analyser.fftSize = +$('fft').value; };
+
+// ---------- 2. 録音して、測る回数を変える ----------
+const zoom = $('zoom'), zctx = zoom.getContext('2d');
+const recSpec = $('recSpec'), rctx = recSpec.getContext('2d');
+$('rates').innerHTML = RATES.map((r) => `<button data-r="${r}" disabled>${rateLabel(r, -1)}</button>`).join('');
+
+function fft(re, im) {   // その場で計算する FFT（長さは 2 のべき乗）
+    const n = re.length;
+    for (let i = 1, j = 0; i < n; i++) {
+        let bit = n >> 1; for (; j & bit; bit >>= 1) j ^= bit; j ^= bit;
+        if (i < j) { [re[i], re[j]] = [re[j], re[i]]; [im[i], im[j]] = [im[j], im[i]]; }
+    }
+    for (let len = 2; len <= n; len <<= 1) {
+        const ang = -2 * Math.PI / len, wr = Math.cos(ang), wi = Math.sin(ang);
+        for (let i = 0; i < n; i += len) {
+            let cr = 1, ci = 0;
+            for (let j = 0; j < len / 2; j++) {
+                const a = i + j, b = a + len / 2;
+                const tr = re[b] * cr - im[b] * ci, ti = re[b] * ci + im[b] * cr;
+                re[b] = re[a] - tr; im[b] = im[a] - ti; re[a] += tr; im[a] += ti;
+                const nr = cr * wr - ci * wi; ci = cr * wi + ci * wr; cr = nr;
+            }
+        }
+    }
+}
+function drawRecSpec(data, rate) {
+    const W = recSpec.width, H = recSpec.height, maxHz = 8000, plotW = W - AXIS;
+    const N = 2 ** Math.max(6, Math.round(Math.log2(rate * 0.025))), hop = N / 4;
+    const frames = Math.max(1, Math.floor((data.length - N) / hop));
+    const win = new Float32Array(N).map((_, i) => 0.5 - 0.5 * Math.cos(2 * Math.PI * i / (N - 1)));
+    const mags = [];
+    let mx = -Infinity, loud = 0, loudE = -Infinity;
+    for (let t = 0; t < frames; t++) {
+        const re = new Float32Array(N), im = new Float32Array(N);
+        let e = 0;
+        for (let i = 0; i < N; i++) { re[i] = (data[t * hop + i] || 0) * win[i]; e += re[i] * re[i]; }
+        if (e > loudE) { loudE = e; loud = t; }
+        fft(re, im);
+        const m = new Float32Array(N / 2);
+        for (let k = 0; k < N / 2; k++) { m[k] = 10 * Math.log10(re[k] * re[k] + im[k] * im[k] + 1e-12); if (m[k] > mx) mx = m[k]; }
+        mags.push(m);
+    }
+    const img = rctx.createImageData(plotW, H), nyq = rate / 2, binHz = rate / N;
+    for (let x = 0; x < plotW; x++) {
+        const m = mags[Math.min(frames - 1, Math.floor(x / plotW * frames))];
+        for (let y = 0; y < H; y++) {
+            const f = (1 - y / H) * maxHz, o = (y * plotW + x) * 4;
+            let c;
+            if (f > nyq) { c = ((x + y) % 14 < 2) ? [200, 200, 196] : [238, 238, 234]; }   // 記録できない高さ（斜線）
+            else { const k = Math.min(N / 2 - 1, Math.round(f / binHz)); c = color((m[k] - (mx - 70)) / 70); }
+            img.data[o] = c[0]; img.data[o + 1] = c[1]; img.data[o + 2] = c[2]; img.data[o + 3] = 255;
+        }
+    }
+    rctx.putImageData(img, AXIS, 0);
+    drawAxis(rctx, H, maxHz);
+    rs = { data, rate, N, hop, frames, mx, win, plotW, loud, img: null };
+    if (nyq < maxHz) {
+        const y = H - (nyq / maxHz) * H;
+        rctx.fillStyle = '#d35400'; rctx.fillRect(AXIS, Math.round(y) - 1, plotW, Math.round(3 * K));
+        rctx.font = `900 ${Math.round(24 * K * 1.1)}px "Zen Maru Gothic", sans-serif`; rctx.fillStyle = '#1e1e1e';
+        rctx.fillText(`${nyq.toLocaleString()} Hz より上は記録できない`, AXIS + 16, Math.max(30 * K, y - 14));
+    }
+    rs.img = rctx.getImageData(0, 0, W, H);
+    showColumn(selSec === null ? loud : Math.round(selSec * rate / hop));
+}
+
+// ---------- 模様の1列の作り方：① 短い時間の波 → ② 高さごとの強さ → ③ 色にして1列 ----------
+let rs = null, selSec = null;   // rs：録音した音の模様を描いたときの値
+const col = $('col'), cctx = col.getContext('2d');
+function showColumn(t) {
+    if (!rs || EMBED) return;
+    const { data, rate, N, hop, frames, mx, win, plotW } = rs;
+    t = Math.max(0, Math.min(frames - 1, t)); selSec = t * hop / rate;
+    // 上の模様に、選んだ列の印
+    rctx.putImageData(rs.img, 0, 0);
+    const x = AXIS + t / frames * plotW, w = Math.max(4, plotW / frames);
+    rctx.fillStyle = 'rgba(30, 30, 30, .18)'; rctx.fillRect(x - 6, 0, w + 12, recSpec.height);
+    rctx.lineWidth = 3; rctx.strokeStyle = '#1e1e1e'; rctx.strokeRect(x - 6, 1, w + 12, recSpec.height - 2);
+    $('colAt').textContent = `${selSec.toFixed(2)} 秒の所（${(N / rate).toFixed(3)} 秒ぶん）`;
+    // 波を高さごとに分ける（FFT）
+    const re = new Float32Array(N), im = new Float32Array(N), seg = new Float32Array(N);
+    for (let i = 0; i < N; i++) { seg[i] = data[t * hop + i] || 0; re[i] = seg[i] * win[i]; }
+    fft(re, im);
+    const BANDS = 32, maxHz = 8000, nyq = rate / 2, binHz = rate / N, vals = [];
+    for (let b = 0; b < BANDS; b++) {
+        const f0 = b * maxHz / BANDS, f1 = (b + 1) * maxHz / BANDS;
+        if (f0 >= nyq) { vals.push(null); continue; }
+        let m = -Infinity;
+        for (let k = Math.floor(f0 / binHz); k <= Math.min(N / 2 - 1, Math.ceil(f1 / binHz)); k++) m = Math.max(m, 10 * Math.log10(re[k] * re[k] + im[k] * im[k] + 1e-12));
+        vals.push(Math.max(0, Math.min(1, (m - (mx - 70)) / 70)));
+    }
+    // 描く
+    const k = col.width / 1200, H = col.height / k, top = 50, bot = H - 14, ph = bot - top;   // 横 1200 を基準に描く
+    cctx.setTransform(k, 0, 0, k, 0, 0);
+    cctx.fillStyle = '#fff'; cctx.fillRect(0, 0, 1200, H);
+    cctx.fillStyle = '#1e1e1e'; cctx.font = '900 30px "Zen Maru Gothic", sans-serif'; cctx.textBaseline = 'alphabetic';
+    cctx.fillText('① 短い時間の波', 10, 32); cctx.fillText('② 高さごとの強さに分ける', 470, 32); cctx.fillText('③ 色にすると1列', 940, 32);
+    // ① 波
+    let pk = 1e-6; seg.forEach((v) => (pk = Math.max(pk, Math.abs(v))));
+    cctx.strokeStyle = '#e9e9e6'; cctx.lineWidth = 2; cctx.strokeRect(10, top, 380, ph);
+    cctx.beginPath(); cctx.moveTo(10, top + ph / 2); cctx.lineTo(390, top + ph / 2); cctx.stroke();
+    cctx.strokeStyle = '#1e1e1e'; cctx.lineWidth = 2; cctx.beginPath();
+    seg.forEach((v, i) => { const xx = 10 + i / (N - 1) * 380, yy = top + ph / 2 - v / pk * (ph / 2 - 8); i ? cctx.lineTo(xx, yy) : cctx.moveTo(xx, yy); });
+    cctx.stroke();
+    // 矢印
+    const arrow = (x0) => { cctx.fillStyle = '#f57c00'; cctx.beginPath(); cctx.moveTo(x0, top + ph / 2 - 14); cctx.lineTo(x0 + 26, top + ph / 2); cctx.lineTo(x0, top + ph / 2 + 14); cctx.fill(); };
+    arrow(410); arrow(930);
+    // ② 高さごとの強さ（たて＝高さ。下が低い音）
+    const bx = 540, bw = 360, bh = ph / BANDS;
+    cctx.fillStyle = '#555'; cctx.font = '500 22px "JetBrains Mono", monospace'; cctx.textAlign = 'right';
+    [0, 2000, 4000, 6000, 8000].forEach((f) => cctx.fillText(f ? f / 1000 + 'k' : '0', bx - 10, Math.min(bot, Math.max(top + 16, bot - f / maxHz * ph + 7))));
+    cctx.textAlign = 'left';
+    vals.forEach((v, b) => {
+        const y = bot - (b + 1) * bh;
+        if (v === null) { cctx.fillStyle = '#eeeeea'; cctx.fillRect(bx, y + 1, bw, bh - 2); return; }
+        const c = color(v); cctx.fillStyle = `rgb(${c[0]},${c[1]},${c[2]})`;
+        cctx.fillRect(bx, y + 1, Math.max(2, v * bw), bh - 2);
+    });
+    cctx.strokeStyle = '#1e1e1e'; cctx.lineWidth = 2; cctx.beginPath(); cctx.moveTo(bx, top); cctx.lineTo(bx, bot); cctx.stroke();
+    // ③ 色にした1列
+    vals.forEach((v, b) => {
+        const c = v === null ? [238, 238, 234] : color(v);
+        cctx.fillStyle = `rgb(${c[0]},${c[1]},${c[2]})`; cctx.fillRect(1000, bot - (b + 1) * bh, 70, bh + 0.5);
+    });
+    cctx.strokeStyle = '#1e1e1e'; cctx.lineWidth = 3; cctx.strokeRect(1000, top, 70, ph);
+    cctx.setTransform(1, 0, 0, 1, 0, 0);
+}
+recSpec.addEventListener('click', (e) => {
+    if (!rs) return;
+    const r = recSpec.getBoundingClientRect(), cx = (e.clientX - r.left) / r.width * recSpec.width;
+    if (cx < AXIS) return;
+    showColumn(Math.floor((cx - AXIS) / rs.plotW * rs.frames));
+});
+function drawZoom(data, rate) {
+    const W = zoom.width, H = zoom.height;
+    zctx.fillStyle = '#fff'; zctx.fillRect(0, 0, W, H);
+    zctx.strokeStyle = '#e9e9e6'; zctx.lineWidth = 2; zctx.beginPath(); zctx.moveTo(0, H / 2); zctx.lineTo(W, H / 2); zctx.stroke();
+    // いちばん大きい音のあたりを 0.005 秒ぶん切り出す
+    let best = 0, bi = 0; const blk = Math.round(rate * 0.005);
+    for (let i = 0; i + blk < data.length; i += blk) { let s = 0; for (let j = 0; j < blk; j++) s += Math.abs(data[i + j]); if (s > best) { best = s; bi = i; } }
+    let peak = 1e-6; for (let j = 0; j < blk; j++) peak = Math.max(peak, Math.abs(data[bi + j] || 0));
+    const pts = [];
+    for (let j = 0; j < blk; j++) pts.push([j / (blk - 1) * (W - 40) + 20, H / 2 - (data[bi + j] || 0) / peak * (H / 2 - 20)]);
+    zctx.strokeStyle = '#1e1e1e'; zctx.lineWidth = 2.5 * K; zctx.beginPath();
+    pts.forEach(([x, y], i) => (i ? zctx.lineTo(x, y) : zctx.moveTo(x, y))); zctx.stroke();
+    const r = (blk > 120 ? 2.5 : 6) * K;
+    pts.forEach(([x, y]) => { zctx.beginPath(); zctx.arc(x, y, r, 0, Math.PI * 2); zctx.fillStyle = '#f57c00'; zctx.fill(); });
+    return blk;
+}
+async function resample(rate) {
+    if (rate === clipRate) return clip.getChannelData(0);
+    // 1) 元の速さのまま、記録できない高さ（rate の半分より上）を先に消す（消さないと低い音に化けて見える）
+    const pre = new OfflineAudioContext(1, clip.length, clipRate);
+    let node = pre.createBufferSource(); node.buffer = clip; const head = node;
+    for (let k = 0; k < 8; k++) { const f = pre.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = rate * 0.42; f.Q.value = 0.707; node.connect(f); node = f; }
+    node.connect(pre.destination); head.start();
+    const filtered = await pre.startRendering();
+    // 2) 1秒に rate 回だけ測り直す
+    const len = Math.round(clip.length * rate / clipRate);
+    const off = new OfflineAudioContext(1, len, rate);
+    const src = off.createBufferSource(); src.buffer = filtered; src.connect(off.destination); src.start();
+    return (await off.startRendering()).getChannelData(0);
+}
+async function showRate(rate) {
+    if (!clip) return;
+    curRate = rate; curData = await resample(rate);
+    [...$('rates').children].forEach((b) => b.classList.toggle('on', +b.dataset.r === rate));
+    $('vRate').textContent = rate.toLocaleString() + ' Hz';
+    const blk = drawZoom(curData, rate);
+    drawRecSpec(curData, rate);
+    $('zoomNote').textContent = `0.005 秒で ${blk} 回測る`;
+}
+function setClip(buf) {
+    clip = buf; clipRate = buf.sampleRate; selSec = null;
+    RATES[0] = clipRate;
+    $('rates').innerHTML = RATES.map((r, i) => `<button data-r="${r}">${rateLabel(r, i)}</button>`).join('');
+    [...$('rates').children].forEach((b) => (b.onclick = () => showRate(+b.dataset.r)));
+    $('btnPlay').disabled = false;
+    $('recStatus').textContent = 'サンプリングレートを変えて「聞く」を押してみよう。';
+    showRate(clipRate);
+}
+async function record() {
+    try {
+        ac = ac || new AudioContext(); await ac.resume();
+        const stream = micStream || await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+        const rec = new MediaRecorder(stream), chunks = [];
+        rec.ondataavailable = (e) => chunks.push(e.data);
+        const done = new Promise((r) => (rec.onstop = r));
+        rec.start(); $('btnRec').disabled = true;
+        for (let s = 3; s > 0; s--) { $('btnRec').textContent = `録音中… ${s}`; await new Promise((r) => setTimeout(r, 1000)); }
+        rec.stop(); await done;
+        if (!micStream) stream.getTracks().forEach((t) => t.stop());
+        const buf = await ac.decodeAudioData(await new Blob(chunks).arrayBuffer());
+        setClip(buf);
+    } catch (e) {
+        $('recStatus').textContent = '録音できませんでした（' + e.name + '）。ブラウザのマイクの許可を確かめてください。'; $('recStatus').className = 'status err';
+    }
+    $('btnRec').disabled = false; $('btnRec').textContent = '3秒録音する';
+}
+$('btnRec').onclick = record;
+$('btnPlay').onclick = async () => {
+    if (!curData) return;
+    ac = ac || new AudioContext(); await ac.resume();
+    const b = ac.createBuffer(1, curData.length, curRate); b.copyToChannel(curData, 0);
+    const s = ac.createBufferSource(); s.buffer = b; s.connect(ac.destination); s.start();
+};
+$('file').onchange = async (e) => {
+    const f = e.target.files[0]; if (!f) return;
+    ac = ac || new AudioContext();
+    try { setClip(await ac.decodeAudioData(await f.arrayBuffer())); } catch (err) { $('recStatus').textContent = 'このファイルは読めませんでした。'; $('recStatus').className = 'status err'; }
+};
+function blankRec() {
+    rctx.fillStyle = '#fff'; rctx.fillRect(0, 0, recSpec.width, recSpec.height); drawAxis(rctx, recSpec.height, 8000);
+    zctx.fillStyle = '#fff'; zctx.fillRect(0, 0, zoom.width, zoom.height);
+}
+blankRec();
+// 窓の大きさが変わったら、絵の細かさをそろえ直して描き直す
+let fitTimer = 0;
+window.addEventListener('resize', () => {
+    clearTimeout(fitTimer);
+    fitTimer = setTimeout(() => {
+        fitCanvases(); clearLive();
+        if (curData) { drawZoom(curData, curRate); drawRecSpec(curData, curRate); } else blankRec();
+    }, 200);
+});
+</script>
+</body>
+</html>
