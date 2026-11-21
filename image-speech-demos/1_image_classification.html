@@ -31,6 +31,7 @@ header { display: flex; align-items: center; gap: 18px; padding: 14px 24px; bord
 header h1 { font-size: 24px; font-weight: 900; background: linear-gradient(transparent 60%, var(--hl) 60%, var(--hl) 92%, transparent 92%); padding: 0 4px; }
 header .tag { padding: 4px 12px; border-radius: 999px; background: var(--accent); color: #fff; font-size: 14px; font-weight: 900; }
 header .note { margin-left: auto; font-size: 14px; color: var(--muted); }
+header a.back { padding: 4px 14px; border-radius: 999px; border: 2px solid var(--ink); color: var(--ink); font-size: 14px; font-weight: 900; text-decoration: none; }
 main { display: grid; grid-template-columns: minmax(300px, 340px) minmax(380px, 1fr) minmax(320px, 400px); gap: 20px; padding: 12px 24px 10px; align-items: start; }
 @media (max-width: 1100px) { main { grid-template-columns: 1fr; } }
 section.panel { background: var(--panel); border-radius: var(--radius); padding: 14px 18px; }
@@ -112,6 +113,7 @@ html.embed .pixel { margin-top: 8px; min-height: 0; }
     <span class="tag">体験1</span>
     <h1>画像とピクセル・画像分類</h1>
     <span class="note">カメラの映像はこのパソコンの中だけで使われます（外には送りません）</span>
+    <a class="back" href="./">← メニュー</a>
 </header>
 <main>
     <div>
