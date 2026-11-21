@@ -1,6 +1,6 @@
 // 体験ページ 4〜7 の共通の道具（中継のサーバへの頼み方・エラーの見立て・料金・写真と声の下ごしらえ・カメラ・録音）
 // 写真を縮める・声を整える・模様の図を描くのは、このブラウザの中でする。OpenAI へは中継のサーバ（worker/）を通して頼む。
-// APIキーは中継のサーバの中にだけあり、このページには来ない。ページからは合言葉だけを送る
+// APIキーは中継のサーバの中にだけあり、このページには来ない。管理者が管理用のページで Password を入れたときだけ、それを一緒に送る
 const $ = (id) => document.getElementById(id);
 const esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
@@ -46,13 +46,13 @@ const ttsYen = (u) => ((u.input_tokens || 0) * PRICE_TTS_IN + (u.output_tokens |
 class AppError extends Error {
     constructor(info) { super(info.title); this.info = info; }
 }
-const NOT_REACHED = new AppError({ code: null, title: 'サーバに届きませんでした', cause: 'ネットワークが切れた・ネットワークで止められている', fix: '少し待って、もう一度押す。直らなければ講師に' });
+const NOT_REACHED = new AppError({ code: null, title: 'サーバに届きませんでした', cause: 'ネットワークが切れた・ネットワークで止められている', fix: '少し待って、もう一度押す。直らなければ管理者に' });
 // 中継のサーバが止めたとき
 const PROXY_HINT = {
-    passcode: ['合言葉が違います', '合言葉の打ち間違い（前後の空白など）', 'ページの上の「合言葉」を入れ直す'],
-    closed: ['今は使えない時間です', '', '使える時間になってから、もう一度押す'],
-    admin: ['講師の合言葉でだけ使えます', '', '講師の合言葉を入れる'],
-    not_ready: ['サーバの準備ができていません', 'サーバに APIキーか合言葉がまだ入っていない', '講師に伝える'],
+    password: ['Password が違います', 'Password の打ち間違い（前後の空白など）', '管理用のページで Password を入れ直す'],
+    closed: ['今は使えない時間です', '', '使用開始時間から使用終了時間までの間に、もう一度押す'],
+    admin: ['管理者だけが使えます', '', '管理者の Password を入れる'],
+    not_ready: ['サーバの準備ができていません', 'サーバに APIキーか管理者の Password がまだ入っていない', '管理者に伝える'],
     origin: ['このページからは使えません', '体験ページではない場所で開いている', '体験ページの URL から開く'],
     rate: ['短い時間に頼みすぎました', '1分あたりの回数の上限をこえた', '30秒ほど待って、もう一度押す'],
     too_big: ['送るものが大きすぎます', '写真や声が大きい', '小さい写真にするか、短く話す'],
@@ -62,53 +62,49 @@ function explain(status, body) {
     const e = (body && body.error) || {};
     if (e.type === 'proxy' && e.code === 'invalid') return { code: status, title: e.message, cause: '', fix: '' };   // 管理用のページで、設定の値が正しくないとき
     if (e.type === 'proxy') {
-        const h = PROXY_HINT[e.code] || [e.message || 'サーバが受け付けませんでした', '', '講師に伝える'];
-        return { code: status, title: h[0], cause: e.code === 'closed' ? e.message : h[1], fix: h[2] };   // 時間外のときは、使える時間を見せる
+        const h = PROXY_HINT[e.code] || [e.message || 'サーバが受け付けませんでした', '', '管理者に伝える'];
+        return { code: status, title: h[0], cause: e.code === 'closed' ? e.message : h[1], fix: h[2] };   // 時間外のときは、使用開始時間と使用終了時間を見せる
     }
     const detail = e.message ? `${e.type || ''} ${e.code || ''} ${e.message}`.trim().slice(0, 800) : undefined;
     const out = (title, cause = '', fix = '') => ({ code: status, title, cause, fix, detail });
-    if (status === 429 && e.code === 'insufficient_quota') return out('使える金額の上限に達しました', 'サーバのキーのプロジェクトの残高・上限を使い切った', '講師に伝える');
+    if (status === 429 && e.code === 'insufficient_quota') return out('使える金額の上限に達しました', 'サーバのキーのプロジェクトの残高・上限を使い切った', '管理者に伝える');
     const table = {
-        400: ['送った中身を OpenAI が受け付けませんでした', '設定の値や、モデルとの組み合わせが合っていない', '「くわしく」を講師に見せる'],
-        401: ['サーバの APIキーが正しくありません', 'サーバに入れたキーの間違い・無効になったキー', '講師に伝える'],
-        403: ['このキーでは、このモデルや機能を使えません', 'キーのプロジェクトで、このモデルが許可されていない', '講師に伝える'],
-        404: ['モデルが見つかりません', 'モデルの名前が違う・このキーでは使えないモデル', '講師に伝える'],
+        400: ['送った中身を OpenAI が受け付けませんでした', '設定の値や、モデルとの組み合わせが合っていない', '「くわしく」を管理者に見せる'],
+        401: ['サーバの APIキーが正しくありません', 'サーバに入れたキーの間違い・無効になったキー', '管理者に伝える'],
+        403: ['このキーでは、このモデルや機能を使えません', 'キーのプロジェクトで、このモデルが許可されていない', '管理者に伝える'],
+        404: ['モデルが見つかりません', 'モデルの名前が違う・このキーでは使えないモデル', '管理者に伝える'],
         429: ['短い時間に頼みすぎました', '1分あたりの回数やトークンの上限をこえた', '30秒ほど待って、もう一度押す'],
     };
     if (table[status]) return out(...table[status]);
     if (status >= 500) return out('OpenAI の中でエラーが起きました', 'OpenAI 側の一時的な不調', '少し待って、もう一度押す');
-    return out(`思わぬエラー（${status}）`, '', '「くわしく」を講師に見せる');
+    return out(`思わぬエラー（${status}）`, '', '「くわしく」を管理者に見せる');
 }
 
-// ---------- 合言葉（このタブを閉じるまで覚える） ----------
-const PASS_KEY = 'image-speech-demos:passcode';
+// ---------- 管理者の Password（管理用のページで入れる。このタブを閉じるまで覚え、体験 4〜7 でも使う） ----------
+const PASS_KEY = 'image-speech-demos:admin-password';
 let passMem = '';
-function passcode() { try { return sessionStorage.getItem(PASS_KEY) || ''; } catch (e) { return passMem; } }
-function setPass(v) { passMem = v; try { sessionStorage.setItem(PASS_KEY, v); } catch (e) { /* このページの間だけ覚える */ } }
+function password() { try { return sessionStorage.getItem(PASS_KEY) || ''; } catch (e) { return passMem; } }
+function setPassword(v) { passMem = v; try { sessionStorage.setItem(PASS_KEY, v); } catch (e) { /* このページの間だけ覚える */ } }
+const withPassword = (h) => (password() ? { ...h, 'X-Password': password() } : h);
 async function checkPass() {
     const el = $('passState');
     if (!el) return;
-    if (!passcode()) { el.textContent = ''; el.className = 'passstate'; return; }
+    if (!password()) { el.textContent = ''; el.className = 'passstate'; return; }
     el.textContent = '…'; el.className = 'passstate';
     try {
-        const r = await fetch(API_BASE + 'check', { headers: { 'X-Passcode': passcode() } });
-        let j = null;
-        try { j = await r.json(); } catch (e) { /* 中身が読めないときは番号だけで分ける */ }
-        el.textContent = r.ok ? (j && j.role === 'admin' ? 'OK（講師）' : 'OK') : r.status === 401 ? '違います'
-            : j && j.error && j.error.code === 'closed' ? '時間外' : 'サーバの準備中';
-        el.title = r.ok ? '' : (j && j.error && j.error.message) || '';
+        const r = await fetch(API_BASE + 'check', { headers: withPassword({}) });
+        el.textContent = r.ok ? 'OK' : r.status === 401 ? '違います' : 'サーバの準備中';
         el.className = 'passstate ' + (r.ok ? 'ok' : 'ng');
     } catch (e) { el.textContent = 'サーバに届きません'; el.className = 'passstate ng'; }
 }
 
 // ---------- 中継のサーバに頼む ----------
 async function call(path, { json, form } = {}) {
-    if (!passcode()) throw new AppError({ code: null, title: '合言葉が入っていません', cause: '', fix: 'ページの上の「合言葉」の欄に、講師から聞いた合言葉を入れる' });
     let r;
     try {
         r = await fetch(API_BASE + 'v1/' + path, {
             method: 'POST',
-            headers: json ? { 'X-Passcode': passcode(), 'Content-Type': 'application/json' } : { 'X-Passcode': passcode() },
+            headers: withPassword(json ? { 'Content-Type': 'application/json' } : {}),
             body: json ? JSON.stringify(json) : form,
         });
     } catch (e) { throw NOT_REACHED; }
@@ -525,7 +521,7 @@ function showError(el, e) {
     el.innerHTML = `<b>エラー${i.code ? ' ' + esc(i.code) : ''}：${esc(i.title)}</b>`
         + (i.cause ? `<br>原因の見立て：${esc(i.cause)}` : '')
         + (i.fix ? `<br>直し方：${esc(i.fix)}` : '')
-        + (i.detail ? `<details class="errdetail"><summary>くわしく（講師に見せる）</summary><code>${esc(i.detail)}</code></details>` : '');
+        + (i.detail ? `<details class="errdetail"><summary>くわしく（管理者に見せる）</summary><code>${esc(i.detail)}</code></details>` : '');
 }
 
 // カメラ
@@ -571,10 +567,10 @@ class Recorder {
     }
 }
 
-// ページを開いたとき：料金の合計と、合言葉の欄
+// ページを開いたとき：料金の合計と、Password の欄（管理用のページだけにある）
 showTotal(totalYen());
 if ($('pass')) {
-    $('pass').value = passcode();
-    $('pass').addEventListener('change', () => { setPass($('pass').value.trim()); checkPass(); });
+    $('pass').value = password();
+    $('pass').addEventListener('change', () => { setPassword($('pass').value.trim()); checkPass(); });
     checkPass();
 }

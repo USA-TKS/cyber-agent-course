@@ -17,7 +17,6 @@ header .total { margin-left: auto; padding: 5px 16px; border-radius: 999px; back
 header .total + a.back { margin-left: 0; }
 header label.pass { margin-left: auto; display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 900; }
 header label.pass input { width: 140px; padding: 4px 12px; font-size: 16px; }
-header label.pass + .total { margin-left: 0; }
 .passstate { min-width: 2em; font-size: 15px; }
 .passstate.ok { color: #1e8e3e; }
 .passstate.ng { color: var(--ng); }

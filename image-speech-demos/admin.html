@@ -22,27 +22,25 @@ label.check input { width: 22px; height: 22px; accent-color: var(--accent); }
 </head>
 <body>
 <header>
-    <span class="tag api">講師</span>
+    <span class="tag api">管理者</span>
     <h1>体験ページの API の設定</h1>
-    <label class="pass">講師の合言葉<input id="pass" type="password" autocomplete="off"><span id="passState" class="passstate"></span></label>
+    <label class="pass">管理者の Password<input id="pass" type="password" autocomplete="off"><span id="passState" class="passstate"></span></label>
     <a class="back" href="./">← 戻る</a>
 </header>
 <main>
     <section class="panel white">
         <h2><span class="n ink">1</span>いまの状態</h2>
         <p class="now" id="now">—</p>
-        <p class="status" id="nowSub">講師の合言葉を入れると、いまの設定を読みます</p>
+        <p class="status" id="nowSub">管理者の Password を入れると、いまの設定を読みます</p>
         <div class="btns" style="margin-top:16px;"><button id="btnStop" class="rec" disabled>今すぐ止める</button><button id="btnOpen" disabled>許可する</button></div>
     </section>
     <section class="panel">
-        <h2><span class="n">2</span>講師以外が使う合言葉と時間</h2>
-        <label class="lb" for="shared">みんなの合言葉<small>4〜64 文字。講師の合言葉とは別のもの</small></label>
-        <input id="shared" type="text" autocomplete="off">
+        <h2><span class="n">2</span>管理者以外の使用時間</h2>
         <div class="times">
-            <div><label class="lb" for="start">使える時間の始まり</label><input id="start" type="datetime-local"></div>
-            <div><label class="lb" for="end">終わり</label><input id="end" type="datetime-local"></div>
+            <div><label class="lb" for="start">使用開始時間</label><input id="start" type="datetime-local"></div>
+            <div><label class="lb" for="end">使用終了時間</label><input id="end" type="datetime-local"></div>
         </div>
-        <label class="check"><input id="enabled" type="checkbox">講師以外が使うことを許可する</label>
+        <label class="check"><input id="enabled" type="checkbox">管理者以外が使うことを許可する</label>
         <div class="btns" style="margin-top:18px;"><button id="btnSave" class="primary" disabled>保存する</button><span class="status" id="saveStatus" style="margin:0;"></span></div>
     </section>
 </main>
@@ -59,7 +57,7 @@ async function settings(method, body) {
     let r;
     try {
         r = await fetch(API_BASE + 'admin/settings', { method, body: body ? JSON.stringify(body) : undefined,
-            headers: body ? { 'X-Passcode': passcode(), 'Content-Type': 'application/json' } : { 'X-Passcode': passcode() } });
+            headers: withPassword(body ? { 'Content-Type': 'application/json' } : {}) });
     } catch (e) { throw NOT_REACHED; }
     let j = null;
     try { j = await r.json(); } catch (e) { /* 中身が読めないときは番号だけで見立てる */ }
@@ -68,18 +66,18 @@ async function settings(method, body) {
 }
 function show(s) {
     current = s;
-    $('shared').value = s.passcode; $('start').value = toInput(s.start); $('end').value = toInput(s.end); $('enabled').checked = s.enabled;
-    const now = Date.now(), a = Date.parse(s.start), b = Date.parse(s.end), span = s.start && s.end ? `${fmt(s.start)}〜${fmt(s.end)}` : '';
-    const why = !s.passcode ? 'みんなの合言葉がまだ決まっていません' : !s.enabled ? '止めています' : !span ? '使える時間がまだ決まっていません'
-        : now < a ? `まだ始まっていません（${span}）` : now >= b ? `終わりました（${span}）` : '';
-    $('now').textContent = why ? '講師以外は使えません' : '講師以外も使えます';
+    $('start').value = toInput(s.start); $('end').value = toInput(s.end); $('enabled').checked = s.enabled;
+    const now = Date.now(), a = Date.parse(s.start), b = Date.parse(s.end);
+    const why = !s.enabled ? '止めています' : !s.start || !s.end ? '使用開始時間と使用終了時間がまだ決まっていません'
+        : now < a ? `まだ始まっていません（使用開始時間 ${fmt(s.start)}）` : now >= b ? `終わりました（使用終了時間 ${fmt(s.end)}）` : '';
+    $('now').textContent = why ? '管理者以外は使えません' : '管理者以外も使えます';
     $('now').className = 'now ' + (why ? 'ng' : 'ok');
     $('nowSub').className = 'status';
-    $('nowSub').textContent = why || `${fmt(s.end)} まで（${span}）`;
+    $('nowSub').textContent = why || `使用終了時間 ${fmt(s.end)} まで`;
     $('btnSave').disabled = false; $('btnStop').disabled = !s.enabled; $('btnOpen').disabled = s.enabled;
 }
 async function load() {
-    if (!passcode()) return;
+    if (!password()) return;
     try { show(await settings('GET')); } catch (e) { showError($('nowSub'), e); }
 }
 async function save(body, done) {
@@ -89,7 +87,7 @@ async function save(body, done) {
         $('saveStatus').textContent = done + '（ほかの場所に届くまで、最大1分ほどかかる）';
     } catch (e) { showError($('saveStatus'), e); }
 }
-$('btnSave').onclick = () => save({ passcode: $('shared').value.trim(), start: fromInput($('start').value), end: fromInput($('end').value), enabled: $('enabled').checked }, '保存しました');
+$('btnSave').onclick = () => save({ start: fromInput($('start').value), end: fromInput($('end').value), enabled: $('enabled').checked }, '保存しました');
 $('btnStop').onclick = () => save({ ...current, enabled: false }, '止めました');
 $('btnOpen').onclick = () => save({ ...current, enabled: true }, '許可しました');
 $('pass').addEventListener('change', load);

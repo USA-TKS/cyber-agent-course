@@ -1,7 +1,7 @@
 // 体験ページ（image-speech-demos）の 4〜7 が OpenAI の API を使うための中継。
-// 講師の APIキー（OPENAI_API_KEY）と講師の合言葉（ADMIN_PASSCODE）は、この Worker の秘密情報にだけ置く（ページには渡さない）。
-// 講師の合言葉はいつでも使える。講師以外は「みんなの合言葉」で、講師が許可していて、決めた時間の中のときだけ使える。
-// みんなの合言葉・使える時間・許可は KV（SETTINGS）に置き、管理用のページ（admin.html）から講師が変える。
+// APIキー（OPENAI_API_KEY）と管理者の Password（ADMIN_PASSWORD）は、この Worker の秘密情報にだけ置く（ページには渡さない）。
+// 管理者は Password でいつでも使える。管理者以外は、管理者が許可していて、使用開始時間から使用終了時間までの間だけ使える。
+// 使用開始時間・使用終了時間・許可は KV（SETTINGS）に置き、管理用のページ（admin.html）から管理者が変える。
 // 通すのは、決めた3つの窓口と3つのモデルだけ。写真や声は記録しない（Workers Logs も使わない）。
 
 const ROUTES = {
@@ -22,24 +22,24 @@ export default {
 
         if (req.method === 'OPTIONS') {
             return new Response(null, { status: 204, headers: { ...cors, 'Access-Control-Allow-Methods': 'GET, POST, PUT',
-                'Access-Control-Allow-Headers': 'Content-Type, X-Passcode', 'Access-Control-Max-Age': '86400' } });
+                'Access-Control-Allow-Headers': 'Content-Type, X-Password', 'Access-Control-Max-Age': '86400' } });
         }
         if (!cors['Access-Control-Allow-Origin']) return fail(403, 'origin', '体験ページ以外からは使えません');
-        if (!env.OPENAI_API_KEY || !env.ADMIN_PASSCODE) return fail(503, 'not_ready', 'サーバに APIキーか講師の合言葉がまだ入っていません');
+        if (!env.OPENAI_API_KEY || !env.ADMIN_PASSWORD) return fail(503, 'not_ready', 'サーバに APIキーか管理者の Password がまだ入っていません');
         if (env.LIMITER) {
             const { success } = await env.LIMITER.limit({ key: req.headers.get('CF-Connecting-IP') || 'all' });
             if (!success) return fail(429, 'rate', '短い時間に頼みすぎました');
         }
 
-        // だれが使っているか：講師（admin）・講師以外（user）・時間外（closed）・合言葉が違う（null）
-        const who = await roleOf(req.headers.get('X-Passcode') || '', env);
-        if (!who) return fail(401, 'passcode', '合言葉が違います');
+        // だれが使っているか：管理者（admin）・管理者以外（user）・時間外（closed）・Password が違う（null）
+        const who = await roleOf(req.headers.get('X-Password') || '', env);
+        if (!who) return fail(401, 'password', 'Password が違います');
         if (who.closed) return fail(403, 'closed', who.closed);
 
         const url = new URL(req.url);
         if (req.method === 'GET' && url.pathname === '/check') return Response.json({ ok: true, role: who.role }, { headers: cors });
         if (url.pathname === '/admin/settings') {
-            if (who.role !== 'admin') return fail(403, 'admin', '講師の合言葉でだけ使えます');
+            if (who.role !== 'admin') return fail(403, 'admin', '管理者だけが使えます');
             if (!env.SETTINGS) return fail(503, 'not_ready', 'サーバに設定の置き場所（KV）がありません');
             if (req.method === 'GET') return Response.json(await loadSettings(env), { headers: cors });
             if (req.method === 'PUT') return saveSettings(req, env, cors, fail);
@@ -89,41 +89,35 @@ export default {
     },
 };
 
-// みんなの合言葉・使える時間（開始と終了。ISO の文字列）・許可（enabled）。まだ決めていなければ、講師以外は使えない
+// 使用開始時間・使用終了時間（ISO の文字列）・許可（enabled）。まだ決めていなければ、管理者以外は使えない
 async function loadSettings(env) {
     const s = env.SETTINGS ? await env.SETTINGS.get('access', 'json') : null;
-    return { passcode: '', start: '', end: '', enabled: false, updated: '', ...(s || {}) };
+    return { start: s?.start || '', end: s?.end || '', enabled: !!s?.enabled, updated: s?.updated || '' };
 }
 
 async function roleOf(given, env) {
-    if (!given) return null;
-    if (await same(given, env.ADMIN_PASSCODE)) return { role: 'admin' };
+    if (given) return (await same(given, env.ADMIN_PASSWORD)) ? { role: 'admin' } : null;
     const s = await loadSettings(env);
-    if (!s.passcode || !(await same(given, s.passcode))) return null;
     const now = Date.now(), start = Date.parse(s.start), end = Date.parse(s.end);
-    if (!s.enabled) return { closed: '講師が止めています' };
-    if (!(now >= start && now < end)) {
-        return { closed: isNaN(start) || isNaN(end) ? '使える時間がまだ決まっていません' : `使える時間は ${JST.format(start)}〜${JST.format(end)}（日本時間）です` };
-    }
+    if (!s.enabled) return { closed: '管理者が止めています' };
+    if (isNaN(start) || isNaN(end)) return { closed: '使用開始時間と使用終了時間がまだ決まっていません' };
+    if (!(now >= start && now < end)) return { closed: `使用開始時間は ${JST.format(start)}、使用終了時間は ${JST.format(end)}（日本時間）です` };
     return { role: 'user' };
 }
 
 async function saveSettings(req, env, cors, fail) {
     let b;
     try { b = await req.json(); } catch (e) { return fail(400, 'bad_json', '送った中身が JSON ではありません'); }
-    const passcode = String(b.passcode ?? '').trim();
-    if (passcode && (passcode.length < 4 || passcode.length > 64)) return fail(400, 'invalid', 'みんなの合言葉は 4〜64 文字にしてください');
-    if (passcode && (await same(passcode, env.ADMIN_PASSCODE))) return fail(400, 'invalid', 'みんなの合言葉は、講師の合言葉と別のものにしてください');
     const start = b.start ? Date.parse(b.start) : NaN, end = b.end ? Date.parse(b.end) : NaN;
     if ((b.start && isNaN(start)) || (b.end && isNaN(end))) return fail(400, 'invalid', '時間の書き方が正しくありません');
-    if (!isNaN(start) && !isNaN(end) && end <= start) return fail(400, 'invalid', '終わりは、始まりより後にしてください');
-    const s = { passcode, start: isNaN(start) ? '' : new Date(start).toISOString(), end: isNaN(end) ? '' : new Date(end).toISOString(),
+    if (!isNaN(start) && !isNaN(end) && end <= start) return fail(400, 'invalid', '使用終了時間は、使用開始時間より後にしてください');
+    const s = { start: isNaN(start) ? '' : new Date(start).toISOString(), end: isNaN(end) ? '' : new Date(end).toISOString(),
                 enabled: !!b.enabled, updated: new Date().toISOString() };
     await env.SETTINGS.put('access', JSON.stringify(s));
     return Response.json(s, { headers: cors });
 }
 
-// 合言葉を、かかる時間で中身が分からない比べ方で比べる
+// Password を、かかる時間で中身が分からない比べ方で比べる
 async function same(a, b) {
     const enc = new TextEncoder();
     const [x, y] = await Promise.all([a, b].map((s) => crypto.subtle.digest('SHA-256', enc.encode(s))));
