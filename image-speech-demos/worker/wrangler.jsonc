@@ -1,0 +1,15 @@
+{
+  // 体験ページの API の中継。公開先は https://image-speech-api.advent-calendar.workers.dev
+  // 秘密情報（OPENAI_API_KEY・PASSCODE）は `wrangler secret put` で入れる（このファイルには書かない）
+  "name": "image-speech-api",
+  "main": "worker.js",
+  "compatibility_date": "2026-11-01",
+  "vars": {
+    // この Worker を使えるページ（カンマ区切り）
+    "ALLOWED_ORIGINS": "https://usa-tks.github.io"
+  },
+  // 1つの IP から 1分 120 回まで（教室の全員が同じ IP でも止まらない程度）
+  "ratelimits": [{ "name": "LIMITER", "namespace_id": "2026123", "simple": { "limit": 120, "period": 60 } }],
+  // 写真や声がログに残らないよう、Workers Logs は使わない
+  "observability": { "enabled": false }
+}

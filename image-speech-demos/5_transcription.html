@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>文字起こしの実験</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500&family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="app.css">
+<style>
+main { grid-template-columns: minmax(400px, 1fr) minmax(560px, 1.7fr); }
+#pairB { grid-template-columns: 1fr; }
+.grid2.one { grid-template-columns: 1fr; }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
+.pair .card .answer { font-size: 22px; padding: 12px 16px; min-height: 64px; }
+.rates { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.rates button { font-family: var(--mono); font-weight: 500; font-size: 16px; padding: 5px 12px; }
+.rates button.on { background: var(--ink); color: #fff; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
+/* AIに入る形 */
+.into { margin-top: 12px; padding: 12px 14px; border-radius: 14px; background: #fff; border: 2px solid var(--line); }
+.into h3 { font-size: 17px; font-weight: 900; margin: 2px 0 6px; }
+.into .facts { display: flex; flex-wrap: wrap; gap: 6px; }
+.into .facts span { padding: 3px 12px; border-radius: 999px; background: var(--panel); font-size: 15px; font-weight: 700; }
+.into .facts b { font-family: var(--mono); color: var(--accent-strong); }
+.into img.mel { display: block; width: 100%; height: 150px; image-rendering: pixelated; border-radius: 8px; border: 2px solid var(--line); margin-top: 4px; }
+.into p { margin-top: 6px; font-size: 14px; color: var(--muted); line-height: 1.5; }
+</style>
+</head>
+<body>
+<header>
+    <span class="tag api">体験5・API</span>
+    <h1>文字起こしの実験</h1>
+    <span class="note">変える条件は1つずつ。声は OpenAI に送られます。名前や住所は話さない</span>
+    <label class="pass">合言葉<input id="pass" type="password" autocomplete="off"><span id="passState" class="passstate"></span></label>
+    <span class="total" id="total">使った料金の合計 …</span>
+    <a class="back" href="./">← 戻る</a>
+</header>
+<main>
+    <div>
+        <section class="panel">
+            <h2><span class="n">1</span>声を録音する</h2>
+            <div class="btns"><button id="btnRec" class="primary big">● 録音を始める</button></div>
+            <p class="status" id="recStatus">お題：早口言葉・茨城弁（だっぺ）・地名（霞ヶ浦）。10秒で自動で止まる</p>
+            <audio id="player" controls hidden></audio>
+            <div class="into" id="into" hidden>
+                <h3>AIに送る形</h3>
+                <div class="facts"><span>WAV</span><span>1秒に <b id="iRate">16,000</b> 回</span><span><b>1</b> チャンネル</span><span><b id="iSec">0</b> 秒</span><span><b id="iKb">0</b> KB</span></div>
+                <h3 style="margin-top:12px;">AIの中では、こんなマスの画像にして読む</h3>
+                <img id="mel" class="mel" alt="AIが読む形（メルの模様）">
+                <p>0.025秒ずつ・0.01秒ずらして、低い音〜高い音を80段に分ける（たて 80 × よこ <b id="iFr">0</b> マス）。多くの音声認識のAIは、この画像から次の言葉を1つずつ予測する</p>
+            </div>
+        </section>
+        <section class="panel">
+            <h2><span class="n">B</span>ヒントを足して文字起こし</h2>
+            <div class="grid2 one">
+                <div><label class="lb" for="prompt">どんな話か<small>prompt</small></label><input id="prompt" type="text" value="茨城県の方言で話している"></div>
+                <div><label class="lb" for="kw">出てきそうな言葉<small>keywords（カンマ区切り）</small></label><input id="kw" type="text" value="霞ヶ浦,土浦,だっぺ"></div>
+            </div>
+            <label class="lb" for="lang">言語<small>languages</small></label>
+            <select id="lang" style="max-width:320px;"><option value="">指定しない</option><option value="ja" selected>ja（日本語）</option><option value="en">en（英語）</option></select>
+            <div class="btns" style="margin-top:16px;"><button id="btnB" class="primary" disabled>ヒントあり・なしで比べる</button><span class="status" id="bStatus" style="margin:0;">先に録音してください</span></div>
+            <div class="pair" id="pairB" hidden>
+                <div class="card"><div class="hd"><span class="pill">ヒントなし</span></div><div class="answer" id="textB0"></div><p class="pieces" id="pcB0"></p></div>
+                <div class="card"><div class="hd"><span class="pill on">ヒントあり</span></div><div class="answer" id="textB1"></div><p class="pieces" id="pcB1"></p></div>
+            </div>
+        </section>
+    </div>
+
+    <div>
+        <section class="panel">
+            <h2><span class="n">A</span>音を変えて文字起こし</h2>
+            <div class="grid2">
+                <div><div class="row">ノイズの大きさ（声の何％か）<b id="vNoise">0%</b></div><input id="noise" type="range" min="0" max="300" step="10" value="0"></div>
+                <div><div class="row">サンプリングレート<b id="vRate">16,000 Hz</b></div><div class="rates" id="rates"></div></div>
+            </div>
+            <div class="btns" style="margin-top:16px;"><button id="btnA" class="primary" disabled>文字起こしする</button><span class="status" id="aStatus" style="margin:0;">先に録音してください</span></div>
+            <div class="pair" id="pairA" hidden>
+                <div class="card"><div class="hd"><span class="pill">元の声</span></div><img id="specA0" class="spec" alt=""><div class="answer" id="textA0"></div><p class="pieces" id="pcA0"></p></div>
+                <div class="card"><div class="hd"><span class="pill on" id="labelA1">変えた声</span></div><img id="specA1" class="spec" alt=""><audio id="audioA1" controls></audio><div class="answer" id="textA1"></div><p class="pieces" id="pcA1"></p></div>
+            </div>
+        </section>
+        <section class="panel">
+            <h2><span class="n ink">✓</span>実験の記録</h2>
+            <table class="log"><thead><tr><th>変えた条件</th><th>結果</th><th>合ってた？</th></tr></thead><tbody id="log"><tr><td colspan="3" style="color:var(--muted);">実験すると、ここにたまる</td></tr></tbody></table>
+        </section>
+    </div>
+</main>
+<script src="app.js"></script>
+<script>
+const RATES = [16000, 8000, 4000, 3000, 2000];   // 録音した声は 16,000（AIに送る形）。そこから下げる
+let rate = 16000, rec = null, hasVoice = false, loggedOrig = false;
+$('rates').innerHTML = RATES.map((r) => `<button data-r="${r}" class="${r === rate ? 'on' : ''}">${r.toLocaleString()}${r === 16000 ? '（元）' : ''}</button>`).join('');
+[...$('rates').children].forEach((b) => (b.onclick = () => {
+    rate = +b.dataset.r; $('vRate').textContent = rate.toLocaleString() + ' Hz';
+    [...$('rates').children].forEach((x) => x.classList.toggle('on', x === b));
+}));
+$('noise').oninput = () => { $('vNoise').textContent = $('noise').value + '%'; };
+
+// 文字起こしが少しずつ届く様子：届いたかけらを1つずつ足し、数と時間を数える
+const pieces = {};
+function startPieces(key) {
+    pieces[key] = { n: 0, t0: performance.now(), first: 0 };
+    $('text' + key).innerHTML = ''; $('text' + key).classList.add('thinking'); $('pc' + key).textContent = '';
+}
+function onPiece(ev) {
+    const p = pieces[ev.key], el = $('text' + ev.key);
+    if (!p) return;
+    if (ev.type === 'start') { p.t0 = performance.now(); $('pc' + ev.key).textContent = 'AIが聞いています…'; return; }
+    const now = (performance.now() - p.t0) / 1000;
+    if (ev.type === 'text') {   // 同じ声なので、前の結果を使った
+        el.classList.remove('thinking'); el.textContent = ev.text; $('pc' + ev.key).textContent = '同じ声なので、前の結果を使った'; return;
+    }
+    el.classList.remove('thinking');
+    if (!p.n) p.first = now;
+    p.n += 1;
+    const sp = document.createElement('span'); sp.className = 'pc'; sp.textContent = ev.text; el.appendChild(sp);
+    $('pc' + ev.key).innerHTML = `届いたかけら <b>${p.n}</b> 個 ・ 最初は <b>${p.first.toFixed(1)}</b> 秒後 ・ いま <b>${now.toFixed(1)}</b> 秒`;
+}
+
+function addLog(cond, text) {
+    const tb = $('log');
+    if (tb.querySelector('td[colspan]')) tb.innerHTML = '';
+    const tr = document.createElement('tr');
+    tr.innerHTML = '<td></td><td></td><td class="ok"><button>〇</button> <button>×</button></td>';
+    tr.children[0].textContent = cond; tr.children[1].textContent = text;
+    tr.querySelectorAll('button').forEach((b) => (b.onclick = () => {
+        tr.querySelectorAll('button').forEach((x) => { x.style.background = ''; x.style.color = ''; });
+        b.style.background = b.textContent === '〇' ? '#f57c00' : '#1e1e1e'; b.style.color = '#fff';
+    }));
+    tb.appendChild(tr);
+}
+
+$('btnRec').onclick = async () => {
+    if (rec) { $('btnRec').disabled = true; return finish(); }
+    try {
+        rec = new Recorder();
+        await rec.start(10, (left) => { $('recStatus').textContent = `録音中… あと ${left} 秒（もう一度押すと止まる）`; });
+        $('btnRec').textContent = '■ 止める'; $('btnRec').className = 'rec big';
+        $('recStatus').className = 'status';
+        rec.done.then(() => rec && finish());
+    } catch (e) { rec = null; showError($('recStatus'), new Error('マイクが使えませんでした（' + e.name + '）。マイクの許可を確かめてください')); }
+};
+async function finish() {
+    const r = rec; rec = null;
+    const audio = await r.stop();
+    $('btnRec').textContent = '● 録り直す'; $('btnRec').className = 'primary big'; $('btnRec').disabled = false;
+    $('player').src = audio; $('player').hidden = false;
+    $('recStatus').className = 'status'; $('recStatus').innerHTML = '<span class="thinking">声を AI に送る形にしています</span>';
+    try {
+        const v = await api('voice', { audio });
+        $('iRate').textContent = v.rate.toLocaleString(); $('iSec').textContent = v.seconds.toFixed(1); $('iKb').textContent = Math.round(v.kb).toLocaleString();
+        $('mel').src = v.mel; $('iFr').textContent = v.frames.toLocaleString(); $('into').hidden = false;
+        $('recStatus').textContent = `${v.seconds.toFixed(1)} 秒の声を録音しました。A か B を試そう`;
+        hasVoice = true; loggedOrig = false;
+        $('btnA').disabled = $('btnB').disabled = false;
+        $('aStatus').textContent = ''; $('bStatus').textContent = '';
+        $('pairA').hidden = $('pairB').hidden = true;
+    } catch (e) { showError($('recStatus'), e); }
+}
+
+$('btnA').onclick = async () => {
+    const noise = +$('noise').value;
+    $('btnA').disabled = true; $('aStatus').className = 'status'; $('aStatus').innerHTML = '<span class="thinking">文字起こし中</span>';
+    const cond = `ノイズ ${noise}%・${rate.toLocaleString()} Hz`;
+    try {
+        startPieces('A0'); startPieces('A1');
+        $('specA0').removeAttribute('src'); $('specA1').removeAttribute('src');
+        $('labelA1').textContent = cond; $('pairA').hidden = false;
+        await apiStream('exp_a', { noise, rate }, (ev) => {
+            if (ev.type === 'info') { $('specA0').src = ev.orig_spec; $('specA1').src = ev.changed_spec; $('audioA1').src = ev.changed_audio; }
+            else onPiece(ev);
+            if (ev.type === 'result') {
+                if (!loggedOrig) { addLog('元の声', ev.orig_text); loggedOrig = true; }
+                addLog(cond, ev.changed_text);
+                $('aStatus').innerHTML = costTag(ev.yen, 'この1回') + `（文字起こし ${ev.calls} 回分）`;
+            }
+        });
+    } catch (e) { showError($('aStatus'), e); }
+    $('btnA').disabled = false;
+};
+
+$('btnB').onclick = async () => {
+    const prompt = $('prompt').value.trim(), keywords = $('kw').value.replace(/、/g, ',').split(',').map((s) => s.trim()).filter(Boolean), lang = $('lang').value;
+    $('btnB').disabled = true; $('bStatus').className = 'status'; $('bStatus').innerHTML = '<span class="thinking">文字起こし中</span>';
+    try {
+        startPieces('B0'); startPieces('B1'); $('pairB').hidden = false;
+        await apiStream('exp_b', { prompt, keywords, languages: lang ? [lang] : [] }, (ev) => {
+            if (ev.type !== 'result') onPiece(ev);
+            else {
+                if (!loggedOrig) { addLog('元の声', ev.plain); loggedOrig = true; }
+                addLog('ヒント：' + [prompt, keywords.join(', '), lang].filter(Boolean).join('／'), ev.hinted);
+                $('bStatus').innerHTML = costTag(ev.yen, 'この1回') + `（文字起こし ${ev.calls} 回分）`;
+            }
+        });
+    } catch (e) { showError($('bStatus'), e); }
+    $('btnB').disabled = false;
+};
+</script>
+</body>
+</html>

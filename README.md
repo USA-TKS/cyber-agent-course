@@ -21,3 +21,9 @@
 | 体験1 画像とピクセル・画像分類 | [ブラウザで開く](https://usa-tks.github.io/cyber-agent-course/image-speech-demos/1_image_classification.html) |
 | 体験2 手と体の検出 | [ブラウザで開く](https://usa-tks.github.io/cyber-agent-course/image-speech-demos/2_hand_body_detection.html) |
 | 体験3 音の波形とスペクトログラム | [ブラウザで開く](https://usa-tks.github.io/cyber-agent-course/image-speech-demos/3_sound_waveform.html) |
+| 体験4 LLMで画像を読み取る | [ブラウザで開く](https://usa-tks.github.io/cyber-agent-course/image-speech-demos/4_read_image.html) |
+| 体験5 文字起こしの実験 | [ブラウザで開く](https://usa-tks.github.io/cyber-agent-course/image-speech-demos/5_transcription.html) |
+| 体験6 声で話すChatbot | [ブラウザで開く](https://usa-tks.github.io/cyber-agent-course/image-speech-demos/6_voice_chat.html) |
+| 体験7 意見メモ | [ブラウザで開く](https://usa-tks.github.io/cyber-agent-course/image-speech-demos/7_feedback_memo.html) |
+
+- 体験4〜6 と、体験7 の「AIに聞く」は OpenAI の API を使います。ページの上の「合言葉」に、講師から聞いた合言葉を入れます。
