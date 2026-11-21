@@ -49,7 +49,7 @@ class AppError extends Error {
 const NOT_REACHED = new AppError({ code: null, title: 'サーバに届きませんでした', cause: 'ネットワークが切れた・ネットワークで止められている', fix: '少し待って、もう一度押す。直らなければ管理者に' });
 // 中継のサーバが止めたとき
 const PROXY_HINT = {
-    password: ['Password が違います', 'Password の打ち間違い（前後の空白など）', '管理用のページで Password を入れ直す'],
+    password: ['Password が違います', 'Password の打ち間違い（前後の空白など）', 'Password を入れ直す'],
     closed: ['今は使えない時間です', '', '使用開始時間から使用終了時間までの間に、もう一度押す'],
     admin: ['管理者だけが使えます', '', '管理者の Password を入れる'],
     not_ready: ['サーバの準備ができていません', 'サーバに APIキーか管理者の Password がまだ入っていない', '管理者に伝える'],
@@ -86,17 +86,6 @@ let passMem = '';
 function password() { try { return sessionStorage.getItem(PASS_KEY) || ''; } catch (e) { return passMem; } }
 function setPassword(v) { passMem = v; try { sessionStorage.setItem(PASS_KEY, v); } catch (e) { /* このページの間だけ覚える */ } }
 const withPassword = (h) => (password() ? { ...h, 'X-Password': password() } : h);
-async function checkPass() {
-    const el = $('passState');
-    if (!el) return;
-    if (!password()) { el.textContent = ''; el.className = 'passstate'; return; }
-    el.textContent = '…'; el.className = 'passstate';
-    try {
-        const r = await fetch(API_BASE + 'check', { headers: withPassword({}) });
-        el.textContent = r.ok ? 'OK' : r.status === 401 ? '違います' : 'サーバの準備中';
-        el.className = 'passstate ' + (r.ok ? 'ok' : 'ng');
-    } catch (e) { el.textContent = 'サーバに届きません'; el.className = 'passstate ng'; }
-}
 
 // ---------- 中継のサーバに頼む ----------
 async function call(path, { json, form } = {}) {
@@ -567,10 +556,5 @@ class Recorder {
     }
 }
 
-// ページを開いたとき：料金の合計と、Password の欄（管理用のページだけにある）
+// ページを開いたとき：料金の合計
 showTotal(totalYen());
-if ($('pass')) {
-    $('pass').value = password();
-    $('pass').addEventListener('change', () => { setPassword($('pass').value.trim()); checkPass(); });
-    checkPass();
-}

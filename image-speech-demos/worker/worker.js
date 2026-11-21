@@ -1,7 +1,7 @@
 // 体験ページ（image-speech-demos）の 4〜7 が OpenAI の API を使うための中継。
 // APIキー（OPENAI_API_KEY）と管理者の Password（ADMIN_PASSWORD）は、この Worker の秘密情報にだけ置く（ページには渡さない）。
-// 管理者は Password でいつでも使える。管理者以外は、管理者が許可していて、使用開始時間から使用終了時間までの間だけ使える。
-// 使用開始時間・使用終了時間・許可は KV（SETTINGS）に置き、管理用のページ（admin.html）から管理者が変える。
+// 管理者は Password でいつでも使える。管理者以外は、使用開始時間から使用終了時間までの間だけ使える。
+// 使用開始時間・使用終了時間は KV（SETTINGS）に置き、管理用のページ（admin.html）から管理者が決める。
 // 通すのは、決めた3つの窓口と3つのモデルだけ。写真や声は記録しない（Workers Logs も使わない）。
 
 const ROUTES = {
@@ -89,17 +89,16 @@ export default {
     },
 };
 
-// 使用開始時間・使用終了時間（ISO の文字列）・許可（enabled）。まだ決めていなければ、管理者以外は使えない
+// 使用開始時間・使用終了時間（ISO の文字列）。まだ決めていなければ、管理者以外は使えない
 async function loadSettings(env) {
     const s = env.SETTINGS ? await env.SETTINGS.get('access', 'json') : null;
-    return { start: s?.start || '', end: s?.end || '', enabled: !!s?.enabled, updated: s?.updated || '' };
+    return { start: s?.start || '', end: s?.end || '', updated: s?.updated || '' };
 }
 
 async function roleOf(given, env) {
     if (given) return (await same(given, env.ADMIN_PASSWORD)) ? { role: 'admin' } : null;
     const s = await loadSettings(env);
     const now = Date.now(), start = Date.parse(s.start), end = Date.parse(s.end);
-    if (!s.enabled) return { closed: '管理者が止めています' };
     if (isNaN(start) || isNaN(end)) return { closed: '使用開始時間と使用終了時間がまだ決まっていません' };
     if (!(now >= start && now < end)) return { closed: `使用開始時間は ${JST.format(start)}、使用終了時間は ${JST.format(end)}（日本時間）です` };
     return { role: 'user' };
@@ -112,7 +111,7 @@ async function saveSettings(req, env, cors, fail) {
     if ((b.start && isNaN(start)) || (b.end && isNaN(end))) return fail(400, 'invalid', '時間の書き方が正しくありません');
     if (!isNaN(start) && !isNaN(end) && end <= start) return fail(400, 'invalid', '使用終了時間は、使用開始時間より後にしてください');
     const s = { start: isNaN(start) ? '' : new Date(start).toISOString(), end: isNaN(end) ? '' : new Date(end).toISOString(),
-                enabled: !!b.enabled, updated: new Date().toISOString() };
+                updated: new Date().toISOString() };
     await env.SETTINGS.put('access', JSON.stringify(s));
     return Response.json(s, { headers: cors });
 }

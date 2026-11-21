@@ -8,7 +8,7 @@
     // この Worker を使えるページ（カンマ区切り）
     "ALLOWED_ORIGINS": "https://usa-tks.github.io"
   },
-  // 使用開始時間・使用終了時間・許可（管理用のページ admin.html から変える）
+  // 使用開始時間・使用終了時間（管理用のページ admin.html から決める）
   "kv_namespaces": [{ "binding": "SETTINGS", "id": "099b89e5a2384e8d80475ae0911b9e19" }],
   // 1つの IP から 1分 120 回まで（教室の全員が同じ IP でも止まらない程度）
   "ratelimits": [{ "name": "LIMITER", "namespace_id": "2026123", "simple": { "limit": 120, "period": 60 } }],

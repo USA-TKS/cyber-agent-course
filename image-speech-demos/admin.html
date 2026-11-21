@@ -9,38 +9,40 @@
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500&family=Zen+Maru+Gothic:wght@500;700;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="app.css">
 <style>
-main { grid-template-columns: minmax(340px, 1fr) minmax(420px, 1.4fr); }
-header label.pass + a.back { margin-left: 0; }
+main { grid-template-columns: 1fr; max-width: 760px; }
+.row2 { display: flex; gap: 10px; }
+.row2 input { flex: 1; }
 .now { font-size: 30px; font-weight: 900; }
 .now.ok { color: #1e8e3e; }
 .now.ng { color: var(--ng); }
 .times { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
-input[type=datetime-local] { width: 100%; font-family: var(--font); font-size: 18px; font-weight: 500; padding: 9px 14px; border: 2px solid var(--ink); border-radius: 12px; background: #fff; color: var(--ink); }
-label.check { display: flex; align-items: center; gap: 10px; margin-top: 18px; font-weight: 900; }
-label.check input { width: 22px; height: 22px; accent-color: var(--accent); }
+@media (max-width: 600px) { .times { grid-template-columns: 1fr; } }
+input[type=password], input[type=datetime-local] { width: 100%; font-family: var(--font); font-size: 18px; font-weight: 500; padding: 9px 14px; border: 2px solid var(--ink); border-radius: 12px; background: #fff; color: var(--ink); }
 </style>
 </head>
 <body>
 <header>
     <span class="tag api">管理者</span>
     <h1>体験ページの API の設定</h1>
-    <label class="pass">管理者の Password<input id="pass" type="password" autocomplete="off"><span id="passState" class="passstate"></span></label>
     <a class="back" href="./">← 戻る</a>
 </header>
 <main>
+    <section class="panel">
+        <h2><span class="n">1</span>Password を入れる</h2>
+        <div class="row2"><input id="pass" type="password" autocomplete="off"><button id="btnLogin" class="primary">入る</button></div>
+        <p class="status" id="loginStatus"></p>
+    </section>
     <section class="panel white">
-        <h2><span class="n ink">1</span>いまの状態</h2>
+        <h2><span class="n ink">2</span>いまの状態</h2>
         <p class="now" id="now">—</p>
-        <p class="status" id="nowSub">管理者の Password を入れると、いまの設定を読みます</p>
-        <div class="btns" style="margin-top:16px;"><button id="btnStop" class="rec" disabled>今すぐ止める</button><button id="btnOpen" disabled>許可する</button></div>
+        <p class="status" id="nowSub">Password を入れると出ます</p>
     </section>
     <section class="panel">
-        <h2><span class="n">2</span>管理者以外の使用時間</h2>
+        <h2><span class="n">3</span>使用開始時間と使用終了時間</h2>
         <div class="times">
-            <div><label class="lb" for="start">使用開始時間</label><input id="start" type="datetime-local"></div>
-            <div><label class="lb" for="end">使用終了時間</label><input id="end" type="datetime-local"></div>
+            <div><label class="lb" for="start">使用開始時間</label><input id="start" type="datetime-local" disabled></div>
+            <div><label class="lb" for="end">使用終了時間</label><input id="end" type="datetime-local" disabled></div>
         </div>
-        <label class="check"><input id="enabled" type="checkbox">管理者以外が使うことを許可する</label>
         <div class="btns" style="margin-top:18px;"><button id="btnSave" class="primary" disabled>保存する</button><span class="status" id="saveStatus" style="margin:0;"></span></div>
     </section>
 </main>
@@ -64,34 +66,44 @@ async function settings(method, body) {
     if (!r.ok) throw new AppError(explain(r.status, j));
     return j;
 }
+// いまの状態：体験 4〜7 を、いま使えるか（30秒ごとに見直す）
+function showNow() {
+    const s = current;
+    if (!s) return;
+    const now = Date.now(), a = Date.parse(s.start), b = Date.parse(s.end);
+    const ok = s.start && s.end && now >= a && now < b;
+    $('now').textContent = ok ? '体験4〜7 を使えます' : '体験4〜7 は使えません';
+    $('now').className = 'now ' + (ok ? 'ok' : 'ng');
+    $('nowSub').className = 'status';
+    $('nowSub').textContent = !s.start || !s.end ? '使用開始時間と使用終了時間がまだ決まっていません'
+        : now < a ? `使用開始時間 ${fmt(s.start)} から使えます（使用終了時間 ${fmt(s.end)}）`
+        : now >= b ? `使用終了時間 ${fmt(s.end)} で終わりました（使用開始時間 ${fmt(s.start)}）`
+        : `使用終了時間 ${fmt(s.end)} まで使えます（使用開始時間 ${fmt(s.start)}）`;
+}
 function show(s) {
     current = s;
-    $('start').value = toInput(s.start); $('end').value = toInput(s.end); $('enabled').checked = s.enabled;
-    const now = Date.now(), a = Date.parse(s.start), b = Date.parse(s.end);
-    const why = !s.enabled ? '止めています' : !s.start || !s.end ? '使用開始時間と使用終了時間がまだ決まっていません'
-        : now < a ? `まだ始まっていません（使用開始時間 ${fmt(s.start)}）` : now >= b ? `終わりました（使用終了時間 ${fmt(s.end)}）` : '';
-    $('now').textContent = why ? '管理者以外は使えません' : '管理者以外も使えます';
-    $('now').className = 'now ' + (why ? 'ng' : 'ok');
-    $('nowSub').className = 'status';
-    $('nowSub').textContent = why || `使用終了時間 ${fmt(s.end)} まで`;
-    $('btnSave').disabled = false; $('btnStop').disabled = !s.enabled; $('btnOpen').disabled = s.enabled;
+    $('start').value = toInput(s.start); $('end').value = toInput(s.end);
+    $('start').disabled = $('end').disabled = $('btnSave').disabled = false;
+    showNow();
 }
-async function load() {
+async function login() {
+    setPassword($('pass').value.trim());
     if (!password()) return;
-    try { show(await settings('GET')); } catch (e) { showError($('nowSub'), e); }
+    $('loginStatus').className = 'status'; $('loginStatus').innerHTML = '<span class="thinking">確かめています</span>';
+    try { show(await settings('GET')); $('loginStatus').textContent = '入りました'; }
+    catch (e) { showError($('loginStatus'), e); }
 }
-async function save(body, done) {
+$('btnLogin').onclick = login;
+$('pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') login(); });
+$('btnSave').onclick = async () => {
     $('saveStatus').className = 'status'; $('saveStatus').innerHTML = '<span class="thinking">保存しています</span>';
     try {
-        show(await settings('PUT', body));
-        $('saveStatus').textContent = done + '（ほかの場所に届くまで、最大1分ほどかかる）';
+        show(await settings('PUT', { start: fromInput($('start').value), end: fromInput($('end').value) }));
+        $('saveStatus').textContent = '保存しました（ほかの場所に届くまで、最大1分ほどかかる）';
     } catch (e) { showError($('saveStatus'), e); }
-}
-$('btnSave').onclick = () => save({ start: fromInput($('start').value), end: fromInput($('end').value), enabled: $('enabled').checked }, '保存しました');
-$('btnStop').onclick = () => save({ ...current, enabled: false }, '止めました');
-$('btnOpen').onclick = () => save({ ...current, enabled: true }, '許可しました');
-$('pass').addEventListener('change', load);
-load();
+};
+setInterval(showNow, 30000);
+if (password()) { $('pass').value = password(); login(); }
 </script>
 </body>
 </html>
