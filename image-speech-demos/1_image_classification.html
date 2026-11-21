@@ -98,7 +98,7 @@ canvas#heat { pointer-events: none; }
                 <label class="file">画像を開く<input id="file" type="file" accept="image/*"></label>
             </div>
             <video id="cam" playsinline muted></video>
-            <p class="status" id="camStatus">「撮る」で止めて、じっくり比べられる</p>
+            <p class="status" id="camStatus">写真を撮る</p>
             <ul class="tips">
                 <li><b>1</b>物を撮って、AIの答えを見る</li>
                 <li><b>2</b>何マスで答えが変わる？</li>
@@ -141,7 +141,7 @@ canvas#heat { pointer-events: none; }
         <div class="ctrl">
             <div class="seg3" id="occ"><button data-n="4">大（16回）</button><button data-n="7" class="on">中（49回）</button><button data-n="14">小（196回）</button></div></div>
         <div class="btns" style="margin-top:10px;"><button id="btnLook" class="primary">調べる</button><button id="btnClear" disabled>消す</button></div>
-        <p class="meter" id="lookMeter">写真を用意してから「調べる」</p>
+        <p class="meter" id="lookMeter"></p>
     </section>
     </div>
 </main>
@@ -580,7 +580,7 @@ async function look() {
 }));
 $('btnLook').onclick = look;
 $('btnClear').onclick = () => {
-    clearHeat(); $('lookMeter').textContent = '写真を用意してから「調べる」';
+    clearHeat(); $('lookMeter').textContent = '';
     if (resumeAfterLook && video.srcObject) {   // 調べる前にカメラで映していたら、映像に戻す
         live = true; $('btnShot').textContent = '撮る'; $('camStatus').textContent = '映像をそのまま見ています。「撮る」で止めると、じっくり比べられます。'; loop();
     }
@@ -594,7 +594,7 @@ try {
         baseOptions: { modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/image_classifier/efficientnet_lite0/int8/latest/efficientnet_lite0.tflite' },
         runningMode: 'IMAGE', maxResults: -1,   // 1000種類すべての確率（AIが見ている場所で、1位の確率を追うため）
     });
-    $('aiStatus').textContent = 'AIの準備ができました。カメラを使うか、画像を開いてください。';
+    $('aiStatus').textContent = '';
     if (hasImage) render();
 } catch (e) {
     $('aiStatus').textContent = 'AIを読み込めませんでした（インターネットの接続を確かめてください）：' + e.message;

@@ -52,12 +52,13 @@ main { grid-template-columns: minmax(400px, 1fr) minmax(560px, 1.7fr); }
         </section>
         <section class="panel">
             <h2><span class="n">B</span>ヒントを足して文字起こし</h2>
+            <p class="status" style="margin-top:0;">録音した声について、AIにヒントを書いて渡す。ヒントなしの結果と比べる</p>
             <div class="grid2 one">
-                <div><label class="lb" for="prompt">どんな話か<small>prompt</small></label><input id="prompt" type="text" value="茨城県の方言で話している"></div>
-                <div><label class="lb" for="kw">出てきそうな言葉<small>keywords（カンマ区切り）</small></label><input id="kw" type="text" value="霞ヶ浦,土浦,だっぺ"></div>
+                <div><label class="lb" for="prompt">どんな話をしているか<small>例：茨城弁で話している</small></label><input id="prompt" type="text" value="茨城弁で話している"></div>
+                <div><label class="lb" for="kw">話の中に出てくる言葉<small>「、」で区切る</small></label><input id="kw" type="text" value="霞ヶ浦、土浦、だっぺ"></div>
             </div>
-            <label class="lb" for="lang">言語<small>languages</small></label>
-            <select id="lang" style="max-width:320px;"><option value="">指定しない</option><option value="ja" selected>ja（日本語）</option><option value="en">en（英語）</option></select>
+            <label class="lb" for="lang">話している言葉</label>
+            <select id="lang" style="max-width:320px;"><option value="">指定しない</option><option value="ja" selected>日本語</option><option value="en">英語</option></select>
             <div class="btns" style="margin-top:16px;"><button id="btnB" class="primary" disabled>ヒントあり・なしで比べる</button><span class="status" id="bStatus" style="margin:0;">先に録音してください</span></div>
             <div class="pair" id="pairB" hidden>
                 <div class="card"><div class="hd"><span class="pill">ヒントなし</span></div><div class="answer" id="textB0"></div><p class="pieces" id="pcB0"></p></div>
@@ -188,7 +189,7 @@ $('btnB').onclick = async () => {
             if (ev.type !== 'result') onPiece(ev);
             else {
                 if (!loggedOrig) { addLog('元の声', ev.plain); loggedOrig = true; }
-                addLog('ヒント：' + [prompt, keywords.join(', '), lang].filter(Boolean).join('／'), ev.hinted);
+                addLog('ヒント：' + [prompt, keywords.join('、'), lang ? $('lang').selectedOptions[0].textContent : ''].filter(Boolean).join('／'), ev.hinted);
                 $('bStatus').textContent = '';
             }
         });

@@ -47,10 +47,6 @@ select { width: 100%; margin-top: 4px; padding: 6px 8px; font-family: var(--font
 .stage .cap { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; font-weight: 900; }
 .stage .cap span { font-family: var(--mono); font-size: 15px; color: var(--accent-strong); }
 canvas#view { display: block; width: min(100%, calc((100vh - 210px) * 4 / 3)); margin: 0 auto; aspect-ratio: 4 / 3; border-radius: 10px; background: var(--panel); }
-.pt { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
-.pt div { padding: 6px 10px; border-radius: 10px; background: var(--panel); }
-.pt div b { display: block; font-family: var(--mono); font-size: 22px; line-height: 1.2; }
-.pt div small { font-size: 12px; color: var(--muted); }
 /* 3 AIが出した数字（毎回の出力がそのまま流れる） */
 .flow { font-size: 13px; font-weight: 700; margin-bottom: 6px; }
 .flow b { font-family: var(--mono); color: var(--accent-strong); }
@@ -115,7 +111,7 @@ body.mode-pose .only-hand, body.mode-hand .only-pose { display: none; }
     </div>
 
     <div class="stage">
-        <div class="cap">AIが見つけた点<span class="cnt" id="count"></span><span id="fps">— 回/秒</span></div>
+        <div class="cap"><span class="cnt" id="count"></span><span id="fps">— 回/秒</span></div>
         <canvas id="view" width="960" height="720"></canvas>
     </div>
 
@@ -125,12 +121,6 @@ body.mode-pose .only-hand, body.mode-hand .only-pose { display: none; }
             <p class="flow" id="flow"></p>
             <div class="nums" id="nums"></div>
             <select id="point"></select>
-            <div class="pt">
-                <div><small>x（左から）</small><b id="px">—</b></div>
-                <div><small>y（上から）</small><b id="py">—</b></div>
-                <div><small>z（奥行き）</small><b id="pz">—</b></div>
-            </div>
-            <p class="rule" id="ptNote">x と y は画面の幅・高さを 1 としたときの位置（0〜1）</p>
         </section>
         <section class="panel">
             <h2><span class="n">4</span>点の位置から判定する</h2>
@@ -290,13 +280,6 @@ function updateJudge(j) {
     if (history.length === need && history.every((x) => x === j.label)) decided = j.label;
     $('final').textContent = decided;
 }
-function updatePoint(list) {
-    const p = list[0]?.[+$('point').value];
-    $('px').textContent = p ? (1 - p.x).toFixed(2) : '—';   // 鏡写しの画面での「左から」
-    $('py').textContent = p ? p.y.toFixed(2) : '—';
-    $('pz').textContent = p ? p.z.toFixed(2) : '—';
-    if (still && p) $('px').textContent = p.x.toFixed(2);
-}
 
 function process(result, g) {
     const list = result.landmarks || [];
@@ -304,7 +287,6 @@ function process(result, g) {
     $('count').textContent = list.length ? `見つけた${what}：${list.length}` : `${what}は見つからない`;
     showNums(list[0]);
     drawLandmarks(list, mode === 'hand' ? HandLandmarker.HAND_CONNECTIONS : PoseLandmarker.POSE_CONNECTIONS, g);
-    updatePoint(list);
     updateJudge(mode === 'hand' ? judgeHand(list[0]) : judgePose(list[0]));
 }
 
