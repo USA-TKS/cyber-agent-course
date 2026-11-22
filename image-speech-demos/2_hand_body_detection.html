@@ -120,7 +120,6 @@ body.mode-pose .only-hand, body.mode-hand .only-pose { display: none; }
             <h2><span class="n">3</span>AIが出した数字</h2>
             <p class="flow" id="flow"></p>
             <div class="nums" id="nums"></div>
-            <select id="point"></select>
         </section>
         <section class="panel">
             <h2><span class="n">4</span>点の位置から判定する</h2>
@@ -161,7 +160,7 @@ const $ = (id) => document.getElementById(id);
 const view = $('view'), ctx = view.getContext('2d');
 const video = document.createElement('video'); video.playsInline = true; video.muted = true;
 let fileset = null, hand = null, pose = null, mode = 'hand', running = 'VIDEO', still = null;
-let lastTs = -1, frames = [], history = [], decided = '—', frameNo = 0;
+let lastTs = -1, frames = [], history = [], decided = '—', frameNo = 0, selPoint = 8;   // selPoint：黄色の丸で示す点の番号
 const FINGERS = ['親指', '人差し指', '中指', '薬指', '小指'], ARMS = ['左手', '右手'];
 const barRows = (names) => names.map((n) => `<div class="fb"><span>${n}</span><span class="tr"><i class="a"></i><i></i></span><em>—</em></div>`).join('');
 $('fbars').innerHTML = barRows(FINGERS); $('pbars').innerHTML = barRows(ARMS);
@@ -183,13 +182,13 @@ function poseOpts() { return { numPoses: +$('num').value }; }
 function fillPoints() {
     const names = mode === 'hand' ? HAND_NAMES : POSE_NAMES;
     const keep = mode === 'hand' ? 8 : 15;
-    $('point').innerHTML = names.map((n, i) => `<option value="${i}" ${i === keep ? 'selected' : ''}>${i}：${n}</option>`).join('');
+    selPoint = keep;
     $('nums').innerHTML = names.map((n, i) => `<span data-i="${i}" title="${n}"><b>${i}</b><i>—</i></span>`).join('');
-    [...$('nums').children].forEach((el) => (el.onclick = () => { $('point').value = el.dataset.i; markPoint(); detectStill(); }));
+    [...$('nums').children].forEach((el) => (el.onclick = () => { selPoint = +el.dataset.i; markPoint(); detectStill(); }));
     $('flow').innerHTML = `1回に ${names.length}点 × 3 ＝ <b>${names.length * 3}</b> 個の数字 ・ いま <b id="frameNo">0</b> 回目`;
     frameNo = 0; markPoint();
 }
-function markPoint() { [...$('nums').children].forEach((el) => el.classList.toggle('sel', el.dataset.i === $('point').value)); }
+function markPoint() { [...$('nums').children].forEach((el) => el.classList.toggle('sel', +el.dataset.i === selPoint)); }
 // AIが出したそのままの数字（0〜1。左右反転する前の値）
 const num = (v) => (v < 0 ? '-' : '') + Math.abs(v).toFixed(2).replace(/^0/, '');
 function showNums(lm) {
@@ -212,7 +211,7 @@ async function setMode(m) {
     $('num').max = m === 'hand' ? 4 : 3; if (+$('num').value > +$('num').max) $('num').value = $('num').max;
     $('vNum').textContent = $('num').value;
     fillPoints(); history = []; decided = '—';
-    if (m === 'pose' && !pose) { setStatus('体のAIを読み込んでいます…'); await makePose(); setStatus('体のAIの準備ができました。'); }
+    if (m === 'pose' && !pose) { setStatus('体のAIを読み込んでいます…'); await makePose(); setStatus(''); }
     if (still) detectStill();
 }
 
@@ -231,7 +230,7 @@ function toXY(p, g) {
     return [x, y];
 }
 function drawLandmarks(list, conns, g) {
-    const sel = +$('point').value, showNum = $('showNum').checked;
+    const sel = selPoint, showNum = $('showNum').checked;
     list.forEach((lm) => {
         ctx.lineWidth = 5; ctx.strokeStyle = '#f57c00';
         conns.forEach(({ start, end }) => {
@@ -353,7 +352,6 @@ $('size').onchange = async () => {
     setStatus('体のAIを読み込み直しています…'); await makePose(); setStatus('モデルを「' + $('vSize').textContent + '」に変えました。'); detectStill();
 };
 $('stable').oninput = () => { $('vStable').textContent = $('stable').value + '回'; history = []; };
-$('point').onchange = () => { markPoint(); detectStill(); };
 $('showNum').onchange = () => detectStill();
 
 ctx.fillStyle = '#f6f6f3'; ctx.fillRect(0, 0, view.width, view.height);
@@ -361,7 +359,7 @@ fillPoints();
 try {
     fileset = await FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@1.1.0/wasm');
     await makeHand();
-    setStatus('AIの準備ができました。「カメラを使う」を押してください。');
+    setStatus('');
 } catch (e) { setStatus('AIを読み込めませんでした（インターネットの接続を確かめてください）：' + e.message, true); }
 </script>
 </body>

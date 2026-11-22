@@ -490,7 +490,7 @@ async function startCam() {
         video.srcObject = stream; await video.play();
         live = true; hasImage = true; $('btnShot').disabled = false; $('btnShot').textContent = '撮る';
         $('btnCam').textContent = 'カメラを止める'; $('btnCam').classList.remove('primary');
-        $('camStatus').textContent = '映像をそのまま見ています。「撮る」で止めると、じっくり比べられます。';
+        $('camStatus').textContent = '';
         loop();
     } catch (e) {
         $('camStatus').textContent = 'カメラが使えませんでした（' + e.name + '）。ブラウザのカメラの許可を確かめるか、「画像を開く」を使ってください。';
@@ -582,7 +582,7 @@ $('btnLook').onclick = look;
 $('btnClear').onclick = () => {
     clearHeat(); $('lookMeter').textContent = '';
     if (resumeAfterLook && video.srcObject) {   // 調べる前にカメラで映していたら、映像に戻す
-        live = true; $('btnShot').textContent = '撮る'; $('camStatus').textContent = '映像をそのまま見ています。「撮る」で止めると、じっくり比べられます。'; loop();
+        live = true; $('btnShot').textContent = '撮る'; $('camStatus').textContent = ''; loop();
     }
     resumeAfterLook = false;
 };
