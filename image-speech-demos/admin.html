@@ -66,13 +66,13 @@ async function settings(method, body) {
     if (!r.ok) throw new AppError(explain(r.status, j));
     return j;
 }
-// いまの状態：体験 4〜6 を、いま使えるか（30秒ごとに見直す）
+// いまの状態：体験 4・5 を、いま使えるか（30秒ごとに見直す）
 function showNow() {
     const s = current;
     if (!s) return;
     const now = Date.now(), a = Date.parse(s.start), b = Date.parse(s.end);
     const ok = s.start && s.end && now >= a && now < b;
-    $('now').textContent = ok ? '体験4〜6 を使えます' : '体験4〜6 は使えません';
+    $('now').textContent = ok ? '体験4・5 を使えます' : '体験4・5 は使えません';
     $('now').className = 'now ' + (ok ? 'ok' : 'ng');
     $('nowSub').className = 'status';
     $('nowSub').textContent = !s.start || !s.end ? '使用開始時間と使用終了時間がまだ決まっていません'

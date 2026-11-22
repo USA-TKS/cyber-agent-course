@@ -1,4 +1,4 @@
-// 体験ページ 4〜6 の共通の道具（中継のサーバへの頼み方・エラーの見立て・写真と声の下ごしらえ・カメラ・録音）
+// 体験ページ 4・5 の共通の道具（中継のサーバへの頼み方・エラーの見立て・写真と声の下ごしらえ・カメラ・録音）
 // 写真を縮める・声を整える・模様の図を描くのは、このブラウザの中でする。OpenAI へは中継のサーバ（worker/）を通して頼む。
 // APIキーは中継のサーバの中にだけあり、このページには来ない。管理者が管理用のページで Password を入れたときだけ、それを一緒に送る
 const $ = (id) => document.getElementById(id);
@@ -8,10 +8,8 @@ const esc = (t) => String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').
 const API_BASE = ['localhost', '127.0.0.1'].includes(location.hostname) ? 'http://127.0.0.1:8787/' : 'https://image-speech-api.advent-calendar.workers.dev/';
 const MODEL_TEXT = 'gpt-6-luna';       // 写真を読む・会話する
 const MODEL_STT = 'gpt-transcribe';    // 文字起こし
-const MODEL_TTS = 'gpt-4o-mini-tts';   // 音声合成
 const SR = 16000;   // 文字起こしの声は、AIに送る形と同じ 1秒に 16,000 回・1チャンネル
 const STT_RATES = [16000, 8000, 4000, 3000, 2000];
-const TTS_VOICES = ['marin', 'cedar', 'alloy', 'ash', 'ballad', 'coral', 'echo', 'fable', 'nova', 'onyx', 'sage', 'shimmer', 'verse'];
 
 // ---------- エラー：番号・何が起きたか・原因の見立て・直し方 ----------
 class AppError extends Error {
@@ -51,7 +49,7 @@ function explain(status, body) {
     return out(`思わぬエラー（${status}）`, '', '「くわしく」を管理者に見せる');
 }
 
-// ---------- 管理者の Password（管理用のページで入れる。このタブを閉じるまで覚え、体験 4〜6 でも使う） ----------
+// ---------- 管理者の Password（管理用のページで入れる。このタブを閉じるまで覚え、体験 4・5 でも使う） ----------
 const PASS_KEY = 'image-speech-demos:admin-password';
 let passMem = '';
 function password() { try { return sessionStorage.getItem(PASS_KEY) || ''; } catch (e) { return passMem; } }
@@ -313,26 +311,6 @@ async function* origText(key) {
     yield { type: 'text', key, text: VOICE_STATE.origText };
     return [VOICE_STATE.origText, 0];
 }
-// 文字を声にする。stream_format "sse" で頼むと声が少しずつ届き、最後の知らせ（speech.audio.done）に使ったトークン数が付く
-async function* speak(args) {
-    let r;
-    try { r = await call('audio/speech', { json: { ...args, stream_format: 'sse' } }); }
-    catch (e) {   // sse で頼めないときは、ふつうに頼む
-        if (!e.info || e.info.code !== 400) throw e;
-        return [await (await call('audio/speech', { json: args })).blob(), null];
-    }
-    if (!(r.headers.get('Content-Type') || '').includes('event-stream')) return [await r.blob(), null];
-    const parts = [];
-    let usage = null, n = 0, size = 0;
-    for await (const ev of sse(r)) {
-        if (ev.type === 'speech.audio.delta') {
-            const b = Uint8Array.from(atob(ev.audio), (c) => c.charCodeAt(0));
-            parts.push(b); size += b.length; n += 1;
-            yield { type: 'audio_chunk', n, kb: size / 1024 };
-        } else if (ev.type === 'speech.audio.done') usage = ev.usage || null;
-    }
-    return [new Blob(parts, { type: 'audio/mpeg' }), usage];
-}
 
 const TASKS = {
     // 写真に質問する。AIに届く大きさ（2026年10月時点の公式ドキュメント）：low は 512 以内、high は 2048 以内で 32×32 のマスが 2,500 まで。
@@ -403,39 +381,6 @@ const TASKS = {
         const [plain, calls] = yield* origText('B0');
         const hinted = yield* transcribeStream('B1', VOICE_STATE.wav, { prompt: String(d.prompt || '').slice(0, 300), keywords: kw, languages: langs });
         yield { type: 'result', plain, hinted, calls: calls + 1 };
-    },
-
-    // 3つのAIのリレー：声 → 文字（gpt-transcribe）→ 返事（gpt-6-luna）→ 声（gpt-4o-mini-tts）。区切りごとに知らせる
-    async *chat(d) {
-        const x = await decodeVoice(d.audio), wav = wavBlob(SR, x);
-        let t = performance.now();
-        const heard = await (await call('audio/transcriptions', { form: sttForm(wav, { languages: ['ja'] }) })).json();
-        const userText = String(heard.text || '').trim();
-        if (!userText) throw new Error('声が聞き取れませんでした。もう一度話してください');
-        yield { type: 'heard', text: userText, ms: elapsed(t), seconds: x.length / SR, kb: wav.size / 1024, chars: userText.length };
-        const history = (d.history || []).filter((m) => m && (m.role === 'user' || m.role === 'assistant'))
-            .map((m) => ({ role: m.role, content: String(m.content) })).slice(-20);
-        const messages = [{ role: 'system', content: d.system || '' }, ...history, { role: 'user', content: userText }];
-        yield { type: 'sent', request: { model: MODEL_TEXT, reasoning: { effort: 'low' }, input: messages } };
-        t = performance.now();
-        let reply = '', first = null, usage = null;
-        for await (const ev of sse(await call('responses', { json: { model: MODEL_TEXT, reasoning: { effort: 'low' }, input: messages, stream: true } }))) {
-            if (ev.type === 'response.output_text.delta') {
-                if (first === null) first = elapsed(t);
-                reply += ev.delta;
-                yield { type: 'delta', text: ev.delta };
-            } else if (ev.type === 'response.completed') usage = ev.response.usage;
-        }
-        const cached = (usage && usage.input_tokens_details && usage.input_tokens_details.cached_tokens) || 0;
-        yield { type: 'reply', text: reply, ms: elapsed(t), first_ms: first,
-                input_tokens: usage ? usage.input_tokens : 0, output_tokens: usage ? usage.output_tokens : 0, cached_tokens: cached, chars: reply.length };
-        const args = { model: MODEL_TTS, voice: TTS_VOICES.includes(d.voice) ? d.voice : 'marin', input: reply,
-                       speed: Math.max(0.5, Math.min(2, +d.speed || 1)), response_format: 'mp3' };
-        if (d.instructions) args.instructions = d.instructions;
-        t = performance.now();
-        yield { type: 'tts_start' };
-        const [audio, ttsUsage] = yield* speak(args);
-        yield { type: 'audio', audio: await fileToDataURL(audio), ms: elapsed(t), kb: audio.size / 1024, tts_usage: ttsUsage };
     },
 };
 // ページから頼む（1回で返す頼みごと／少しずつ返す頼みごと）

@@ -20,7 +20,7 @@ header { display: flex; align-items: center; gap: 18px; padding: 14px 24px; bord
 header h1 { font-size: 24px; font-weight: 900; background: linear-gradient(transparent 60%, var(--hl) 60%, var(--hl) 92%, transparent 92%); padding: 0 4px; }
 header .tag { padding: 4px 12px; border-radius: 999px; background: var(--accent); color: #fff; font-size: 14px; font-weight: 900; }
 header .note { margin-left: auto; font-size: 14px; color: var(--muted); }
-header a.back { padding: 4px 14px; border-radius: 999px; border: 2px solid var(--ink); color: var(--ink); font-size: 14px; font-weight: 900; text-decoration: none; }
+header a.back { margin-left: auto; padding: 4px 14px; border-radius: 999px; border: 2px solid var(--ink); color: var(--ink); font-size: 14px; font-weight: 900; text-decoration: none; }
 main { display: grid; grid-template-columns: minmax(300px, 340px) minmax(380px, 1fr) minmax(320px, 400px); gap: 20px; padding: 12px 24px 10px; align-items: start; }
 @media (max-width: 1100px) { main { grid-template-columns: 1fr; } }
 section.panel { background: var(--panel); border-radius: var(--radius); padding: 14px 18px; }
@@ -85,7 +85,6 @@ canvas#heat { pointer-events: none; }
 <header>
     <span class="tag">体験1</span>
     <h1>画像とピクセル・画像分類</h1>
-    <span class="note">カメラの映像はこのパソコンの中だけで使われます（外には送りません）</span>
     <a class="back" href="./">← 戻る</a>
 </header>
 <main>
@@ -98,7 +97,7 @@ canvas#heat { pointer-events: none; }
                 <label class="file">画像を開く<input id="file" type="file" accept="image/*"></label>
             </div>
             <video id="cam" playsinline muted></video>
-            <p class="status" id="camStatus">写真を撮る</p>
+            <p class="status" id="camStatus"></p>
             <ul class="tips">
                 <li><b>1</b>物を撮って、AIの答えを見る</li>
                 <li><b>2</b>何マスで答えが変わる？</li>
@@ -137,7 +136,7 @@ canvas#heat { pointer-events: none; }
     </section>
     <section class="panel look">
         <h2><span class="n">4</span>AIが見ている場所</h2>
-        <p class="sub2">四角で一部を隠して分類し直す。赤い所ほど手がかり</p>
+        <p class="sub2">画像の一部を四角で隠して分類し直すことを、場所を変えてくり返す。隠すと答えの確率が大きく下がる所ほど赤くなる。赤い所が、AIが答えを決める手がかりにした所</p>
         <div class="ctrl">
             <div class="seg3" id="occ"><button data-n="4">大（16回）</button><button data-n="7" class="on">中（49回）</button><button data-n="14">小（196回）</button></div></div>
         <div class="btns" style="margin-top:10px;"><button id="btnLook" class="primary">調べる</button><button id="btnClear" disabled>消す</button></div>
