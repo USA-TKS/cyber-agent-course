@@ -18,6 +18,7 @@
 | もの | 開き方 |
 |---|---|
 | 体験ページの一覧 | [ブラウザで開く](https://usa-tks.github.io/cyber-agent-course/image-speech-demos/) |
+| スライド | [ブラウザで開く](https://usa-tks.github.io/cyber-agent-course/image-speech-demos/slides.html)（← → で移動、右上の ☰ で一覧。6・14・17・24・28枚目では体験ページが動く） |
 | 体験1 画像とピクセル・画像分類 | [ブラウザで開く](https://usa-tks.github.io/cyber-agent-course/image-speech-demos/1_image_classification.html) |
 | 体験2 手と体の検出 | [ブラウザで開く](https://usa-tks.github.io/cyber-agent-course/image-speech-demos/2_hand_body_detection.html) |
 | 体験3 音の波形とスペクトログラム | [ブラウザで開く](https://usa-tks.github.io/cyber-agent-course/image-speech-demos/3_sound_waveform.html) |
