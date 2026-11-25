@@ -23,6 +23,11 @@ a.item { display: flex; flex-direction: column; justify-content: center; gap: 14
 a.item { grid-column: span 2; }
 a.item.api { grid-column: span 3; }
 a.item:hover { border-color: var(--ink); }
+a.item.soon { opacity: .55; }
+a.item.soon:not([href]) { cursor: default; border-color: transparent; }
+a.item.soon p { color: var(--accent-strong); font-weight: 900; }
+a.item .badge { padding: 3px 12px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 15px; font-weight: 900; }
+main.checking { visibility: hidden; }
 a.item.api { background: var(--accent-soft); }
 a.item .top { display: flex; align-items: center; gap: 12px; }
 a.item .num { display: inline-grid; place-items: center; width: 64px; height: 64px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 32px; font-weight: 900; }
@@ -45,12 +50,26 @@ a.item p { min-height: 3.1em; font-size: 19px; color: var(--muted); }
     <h1>画像認識と音声認識を体験しよう</h1>
     <a class="slides" href="slides.html">スライドで進める</a>
 </header>
-<main>
-    <a class="item" href="1_image_classification.html"><div class="top"><span class="num">1</span></div><h3>画像とピクセル・画像分類</h3><p>マスの数や明るさを変えると、AIの答えはどう変わる？</p></a>
-    <a class="item" href="2_hand_body_detection.html"><div class="top"><span class="num">2</span></div><h3>手と体の検出</h3><p>点の位置と、グー・チョキ・パーの判定</p></a>
-    <a class="item" href="3_sound_waveform.html"><div class="top"><span class="num">3</span></div><h3>音の波形とスペクトログラム</h3><p>声の模様を見る。測る回数を下げる</p></a>
-    <a class="item api" href="4_read_image.html"><div class="top"><span class="num">4</span></div><h3>AIで写真を読み取る</h3><p>写真を撮って、AIに質問する</p></a>
-    <a class="item api" href="5_transcription.html"><div class="top"><span class="num">5</span></div><h3>文字起こしの実験</h3><p>雑音・測る回数・ヒントで、結果はどう変わる？</p></a>
+<main class="checking">
+    <a class="item" data-demo="1" href="1_image_classification.html"><div class="top"><span class="num">1</span></div><h3>画像とピクセル・画像分類</h3><p>マスの数や明るさを変えると、AIの答えはどう変わる？</p></a>
+    <a class="item" data-demo="2" href="2_hand_body_detection.html"><div class="top"><span class="num">2</span></div><h3>手と体の検出</h3><p>点の位置と、グー・チョキ・パーの判定</p></a>
+    <a class="item" data-demo="3" href="3_sound_waveform.html"><div class="top"><span class="num">3</span></div><h3>音の波形とスペクトログラム</h3><p>声の模様を見る。測る回数を下げる</p></a>
+    <a class="item api" data-demo="4" href="4_read_image.html"><div class="top"><span class="num">4</span></div><h3>AIで写真を読み取る</h3><p>写真を撮って、AIに質問する</p></a>
+    <a class="item api" data-demo="5" href="5_transcription.html"><div class="top"><span class="num">5</span></div><h3>文字起こしの実験</h3><p>雑音・測る回数・ヒントで、結果はどう変わる？</p></a>
 </main>
+<script src="publish.js"></script>
+<script>
+// 公開前の体験は「間もなく公開！」にして押せなくする（管理者の Password を入れたタブでは「公開前」の札を付けて開ける）
+fetchPublished().then((list) => {
+    const admin = isAdminViewer();
+    if (list) document.querySelectorAll('a.item[data-demo]').forEach((a) => {
+        if (list.includes(+a.dataset.demo)) return;
+        a.classList.add('soon');
+        if (admin) a.querySelector('.top').insertAdjacentHTML('beforeend', '<span class="badge">公開前</span>');
+        else { a.removeAttribute('href'); a.querySelector('p').textContent = '間もなく公開！'; }
+    });
+    document.querySelector('main').classList.remove('checking');
+});
+</script>
 </body>
 </html>

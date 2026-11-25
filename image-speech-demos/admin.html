@@ -18,6 +18,12 @@ main { grid-template-columns: 1fr; max-width: 760px; }
 .times { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
 @media (max-width: 600px) { .times { grid-template-columns: 1fr; } }
 input[type=password], input[type=datetime-local] { width: 100%; font-family: var(--font); font-size: 18px; font-weight: 500; padding: 9px 14px; border: 2px solid var(--ink); border-radius: 12px; background: #fff; color: var(--ink); }
+.publist { display: grid; gap: 10px; }
+.pubrow { display: flex; align-items: center; gap: 14px; padding: 10px 16px; border-radius: 14px; background: #fff; border: 2px solid var(--line); }
+.pubrow .name { flex: 1; font-weight: 900; }
+.pubrow .st { font-size: 15px; font-weight: 900; color: var(--muted); }
+.pubrow .st.on { color: #1e8e3e; }
+.pubrow button { font-size: 15px; padding: 6px 16px; }
 </style>
 </head>
 <body>
@@ -45,6 +51,11 @@ input[type=password], input[type=datetime-local] { width: 100%; font-family: var
         </div>
         <div class="btns" style="margin-top:18px;"><button id="btnSave" class="primary" disabled>保存する</button><span class="status" id="saveStatus" style="margin:0;"></span></div>
     </section>
+    <section class="panel">
+        <h2><span class="n">4</span>体験ページの公開</h2>
+        <div class="publist" id="pubList"><p class="status" style="margin:0;">Password を入れると出ます</p></div>
+        <p class="status" id="pubStatus"></p>
+    </section>
 </main>
 <script src="app.js"></script>
 <script>
@@ -54,6 +65,43 @@ const toInput = (iso) => { if (!iso) return ''; const d = new Date(iso); return 
 const fromInput = (v) => (v ? new Date(v).toISOString() : '');
 const fmt = (iso) => { const d = new Date(iso); return `${d.getMonth() + 1}/${d.getDate()} ${p2(d.getHours())}:${p2(d.getMinutes())}`; };
 let current = null;
+
+// 体験ページの公開：公開前の体験は、一覧・体験ページ・スライドで「間もなく公開！」になる
+const DEMO_NAMES = { 1: '体験1 画像とピクセル・画像分類', 2: '体験2 手と体の検出', 3: '体験3 音の波形とスペクトログラム', 4: '体験4 AIで写真を読み取る', 5: '体験5 文字起こしの実験' };
+let published = [];
+function showPublished() {
+    $('pubList').innerHTML = '';
+    Object.entries(DEMO_NAMES).forEach(([n, name]) => {
+        const on = published.includes(+n);
+        const row = document.createElement('div');
+        row.className = 'pubrow';
+        row.innerHTML = `<span class="name"></span><span class="st ${on ? 'on' : ''}">${on ? '公開中' : '公開前'}</span><button class="${on ? '' : 'primary'}">${on ? '公開をやめる' : '公開する'}</button>`;
+        row.querySelector('.name').textContent = name;
+        row.querySelector('button').onclick = () => savePublished(on ? published.filter((x) => x !== +n) : published.concat(+n), on ? `${name} の公開をやめました` : `${name} を公開しました`);
+        $('pubList').appendChild(row);
+    });
+}
+async function loadPublished() {
+    let r;
+    try { r = await fetch(API_BASE + 'published', { cache: 'no-store' }); } catch (e) { throw NOT_REACHED; }
+    published = (await r.json()).published;
+    showPublished();
+}
+async function savePublished(list, done) {
+    $('pubStatus').className = 'status'; $('pubStatus').innerHTML = '<span class="thinking">保存しています</span>';
+    try {
+        let r;
+        try {
+            r = await fetch(API_BASE + 'admin/published', { method: 'PUT', headers: withPassword({ 'Content-Type': 'application/json' }), body: JSON.stringify({ published: list }) });
+        } catch (e) { throw NOT_REACHED; }
+        let j = null;
+        try { j = await r.json(); } catch (e) { /* 中身が読めないときは番号だけで見立てる */ }
+        if (!r.ok) throw new AppError(explain(r.status, j));
+        published = j.published;
+        showPublished();
+        $('pubStatus').textContent = done + '（ほかの場所に届くまで、最大1分ほどかかる）';
+    } catch (e) { showError($('pubStatus'), e); }
+}
 
 async function settings(method, body) {
     let r;
@@ -90,7 +138,7 @@ async function login() {
     setPassword($('pass').value.trim());
     if (!password()) return;
     $('loginStatus').className = 'status'; $('loginStatus').innerHTML = '<span class="thinking">確かめています</span>';
-    try { show(await settings('GET')); $('loginStatus').textContent = '入りました'; }
+    try { show(await settings('GET')); await loadPublished(); $('loginStatus').textContent = '入りました'; }
     catch (e) { showError($('loginStatus'), e); }
 }
 $('btnLogin').onclick = login;

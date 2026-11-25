@@ -1,7 +1,7 @@
 // 体験ページ（image-speech-demos）の 4・5 が OpenAI の API を使うための中継。
 // APIキー（OPENAI_API_KEY）と管理者の Password（ADMIN_PASSWORD）は、この Worker の秘密情報にだけ置く（ページには渡さない）。
 // 管理者は Password でいつでも使える。管理者以外は、使用開始時間から使用終了時間までの間だけ使える。
-// 使用開始時間・使用終了時間は KV（SETTINGS）に置き、管理用のページ（admin.html）から管理者が決める。
+// 使用開始時間・使用終了時間と、公開している体験ページは KV（SETTINGS）に置き、管理用のページ（admin.html）から管理者が決める。
 // 通すのは、決めた2つの窓口と2つのモデルだけ。写真や声は記録しない（Workers Logs も使わない）。
 
 const ROUTES = {
@@ -24,6 +24,11 @@ export default {
                 'Access-Control-Allow-Headers': 'Content-Type, X-Password', 'Access-Control-Max-Age': '86400' } });
         }
         if (!cors['Access-Control-Allow-Origin']) return fail(403, 'origin', '体験ページ以外からは使えません');
+        const url = new URL(req.url);
+        // 公開している体験ページの番号（だれでも読める。一覧・体験ページ・スライドが「間もなく公開！」を出すのに使う）
+        if (req.method === 'GET' && url.pathname === '/published') {
+            return Response.json({ published: await loadPublished(env) }, { headers: { ...cors, 'Cache-Control': 'no-store' } });
+        }
         if (!env.OPENAI_API_KEY || !env.ADMIN_PASSWORD) return fail(503, 'not_ready', 'サーバに APIキーか管理者の Password がまだ入っていません');
         if (env.LIMITER) {
             const { success } = await env.LIMITER.limit({ key: req.headers.get('CF-Connecting-IP') || 'all' });
@@ -35,13 +40,18 @@ export default {
         if (!who) return fail(401, 'password', 'Password が違います');
         if (who.closed) return fail(403, 'closed', who.closed);
 
-        const url = new URL(req.url);
         if (req.method === 'GET' && url.pathname === '/check') return Response.json({ ok: true, role: who.role }, { headers: cors });
         if (url.pathname === '/admin/settings') {
             if (who.role !== 'admin') return fail(403, 'admin', '管理者だけが使えます');
             if (!env.SETTINGS) return fail(503, 'not_ready', 'サーバに設定の置き場所（KV）がありません');
             if (req.method === 'GET') return Response.json(await loadSettings(env), { headers: cors });
             if (req.method === 'PUT') return saveSettings(req, env, cors, fail);
+            return fail(404, 'not_found', 'この窓口はありません');
+        }
+        if (url.pathname === '/admin/published') {
+            if (who.role !== 'admin') return fail(403, 'admin', '管理者だけが使えます');
+            if (!env.SETTINGS) return fail(503, 'not_ready', 'サーバに設定の置き場所（KV）がありません');
+            if (req.method === 'PUT') return savePublished(req, env, cors, fail);
             return fail(404, 'not_found', 'この窓口はありません');
         }
 
@@ -112,6 +122,22 @@ async function saveSettings(req, env, cors, fail) {
                 updated: new Date().toISOString() };
     await env.SETTINGS.put('access', JSON.stringify(s));
     return Response.json(s, { headers: cors });
+}
+
+// 公開している体験ページの番号。まだ決めていなければ、体験1 だけを公開する
+const DEMOS = [1, 2, 3, 4, 5];
+async function loadPublished(env) {
+    const v = env.SETTINGS ? await env.SETTINGS.get('published', 'json') : null;
+    return Array.isArray(v) ? v.filter((n) => DEMOS.includes(n)) : [1];
+}
+
+async function savePublished(req, env, cors, fail) {
+    let b;
+    try { b = await req.json(); } catch (e) { return fail(400, 'bad_json', '送った中身が JSON ではありません'); }
+    if (!Array.isArray(b.published)) return fail(400, 'invalid', '公開する体験の一覧が正しくありません');
+    const list = [...new Set(b.published.map(Number))].filter((n) => DEMOS.includes(n)).sort((x, y) => x - y);
+    await env.SETTINGS.put('published', JSON.stringify(list));
+    return Response.json({ published: list }, { headers: cors });
 }
 
 // Password を、かかる時間で中身が分からない比べ方で比べる
