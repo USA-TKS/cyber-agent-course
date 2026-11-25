@@ -18,11 +18,11 @@
 | もの | 開き方 |
 |---|---|
 | 体験ページの一覧 | [ブラウザで開く](https://usa-tks.github.io/cyber-agent-course/image-speech-demos/) |
-| スライド | [ブラウザで開く](https://usa-tks.github.io/cyber-agent-course/image-speech-demos/slides.html)（← → で移動、右上の ☰ で一覧。6・14・17・24・28枚目では体験ページが動く） |
+| スライド | [ブラウザで開く](https://usa-tks.github.io/cyber-agent-course/image-speech-demos/slides.html)（← → で移動、右上の ☰ で一覧。5・12・15・21・25枚目では体験ページが動く） |
 | 体験1 画像とピクセル・画像分類 | [ブラウザで開く](https://usa-tks.github.io/cyber-agent-course/image-speech-demos/1_image_classification.html) |
 | 体験2 手と体の検出 | [ブラウザで開く](https://usa-tks.github.io/cyber-agent-course/image-speech-demos/2_hand_body_detection.html) |
 | 体験3 音の波形とスペクトログラム | [ブラウザで開く](https://usa-tks.github.io/cyber-agent-course/image-speech-demos/3_sound_waveform.html) |
-| 体験4 LLMで画像を読み取る | [ブラウザで開く](https://usa-tks.github.io/cyber-agent-course/image-speech-demos/4_read_image.html) |
+| 体験4 AIで写真を読み取る | [ブラウザで開く](https://usa-tks.github.io/cyber-agent-course/image-speech-demos/4_read_image.html) |
 | 体験5 文字起こしの実験 | [ブラウザで開く](https://usa-tks.github.io/cyber-agent-course/image-speech-demos/5_transcription.html) |
 | API の設定（管理者） | [ブラウザで開く](https://usa-tks.github.io/cyber-agent-course/image-speech-demos/admin.html)（管理者の Password で入り、使用開始時間と使用終了時間を決める） |
 

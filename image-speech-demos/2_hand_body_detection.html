@@ -20,7 +20,7 @@ header { display: flex; align-items: center; gap: 18px; padding: 14px 24px; bord
 header h1 { font-size: 24px; font-weight: 900; background: linear-gradient(transparent 60%, var(--hl) 60%, var(--hl) 92%, transparent 92%); padding: 0 4px; }
 header .tag { padding: 4px 12px; border-radius: 999px; background: var(--accent); color: #fff; font-size: 14px; font-weight: 900; }
 header .note { margin-left: auto; font-size: 14px; color: var(--muted); }
-header a.back { padding: 4px 14px; border-radius: 999px; border: 2px solid var(--ink); color: var(--ink); font-size: 14px; font-weight: 900; text-decoration: none; }
+header a.back { margin-left: auto; padding: 4px 14px; border-radius: 999px; border: 2px solid var(--ink); color: var(--ink); font-size: 14px; font-weight: 900; text-decoration: none; }
 main { display: grid; grid-template-columns: minmax(280px, 320px) minmax(420px, 1fr) minmax(300px, 360px); gap: 20px; padding: 16px 24px 24px; align-items: start; }
 @media (max-width: 1100px) { main { grid-template-columns: 1fr; } }
 section.panel { background: var(--panel); border-radius: var(--radius); padding: 14px 18px; }
@@ -47,13 +47,6 @@ select { width: 100%; margin-top: 4px; padding: 6px 8px; font-family: var(--font
 .stage .cap { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; font-weight: 900; }
 .stage .cap span { font-family: var(--mono); font-size: 15px; color: var(--accent-strong); }
 canvas#view { display: block; width: min(100%, calc((100vh - 210px) * 4 / 3)); margin: 0 auto; aspect-ratio: 4 / 3; border-radius: 10px; background: var(--panel); }
-/* 3 AIが出した数字（毎回の出力がそのまま流れる） */
-.flow { font-size: 13px; font-weight: 700; margin-bottom: 6px; }
-.flow b { font-family: var(--mono); color: var(--accent-strong); }
-.nums { display: grid; grid-template-columns: repeat(3, 1fr); gap: 3px; margin-bottom: 10px; }
-.nums span { display: flex; gap: 4px; padding: 1px 4px; border-radius: 5px; background: #fff; font-family: var(--mono); font-size: 11px; white-space: nowrap; cursor: pointer; }
-.nums span b { min-width: 16px; color: var(--muted); }
-.nums span.sel { background: var(--hl); }
 /* 4 決まりの計算（長さ・高さを比べる棒） */
 .fbars { display: grid; gap: 5px; }
 .fb { display: grid; grid-template-columns: 62px 1fr 50px; gap: 8px; align-items: center; font-size: 13px; font-weight: 700; }
@@ -85,7 +78,6 @@ body.mode-pose .only-hand, body.mode-hand .only-pose { display: none; }
 <header>
     <span class="tag">体験2</span>
     <h1>手と体の検出</h1>
-    <span class="note">カメラの映像はこのパソコンの中だけで使われます（外には送りません）</span>
     <a class="back" href="./">← 戻る</a>
 </header>
 <main>
@@ -102,9 +94,6 @@ body.mode-pose .only-hand, body.mode-hand .only-pose { display: none; }
         <section class="panel">
             <h2><span class="n">2</span>設定を変える</h2>
             <div class="ctrl"><div class="row"><span class="only-hand">見つける手の数</span><span class="only-pose">見つける人数</span><b id="vNum">2</b></div><input id="num" type="range" min="1" max="4" step="1" value="2"></div>
-            <div class="ctrl off" id="sizeCtrl"><div class="row">モデルの大きさ（体だけ）<b id="vSize">軽い</b></div>
-                <select id="size"><option value="lite">軽い（lite）</option><option value="full">ふつう（full）</option><option value="heavy">重い（heavy）</option></select>
-                <small>重いほど点の位置は正確だが、1秒あたりの回数が減る</small></div>
             <div class="ctrl"><div class="row">判定を決めるまでの回数<b id="vStable">1回</b></div><input id="stable" type="range" min="1" max="20" step="1" value="1"><small>同じ判定がこの回数つづいたら決める</small></div>
             <label class="check"><input id="showNum" type="checkbox">点の番号を表示する</label>
         </section>
@@ -117,16 +106,11 @@ body.mode-pose .only-hand, body.mode-hand .only-pose { display: none; }
 
     <div>
         <section class="panel">
-            <h2><span class="n">3</span>AIが出した数字</h2>
-            <p class="flow" id="flow"></p>
-            <div class="nums" id="nums"></div>
-        </section>
-        <section class="panel">
-            <h2><span class="n">4</span>点の位置から判定する</h2>
+            <h2><span class="n">3</span>点の位置から判定する</h2>
             <div class="only-hand">
                 <div class="fbars" id="fbars"></div>
                 <p class="fleg"><i class="a"></i><span>手首から指先</span><i></i><span>手首から第2関節</span></p>
-                <p class="rule"><b>決まり：</b>指先が第2関節より手首から遠ければ「伸びている」（親指は、小指の付け根からの遠さで比べる）。人差し指〜小指が全部たたまれていれば<b>グー</b>、人差し指と中指だけなら<b>チョキ</b>、全部伸びていれば<b>パー</b></p>
+                <p class="rule"><b>決まり：</b>指先が第2関節より手首から遠ければ「伸びている」。人差し指〜小指が全部たたまれていれば<b>グー</b>、人差し指と中指だけなら<b>チョキ</b>、全部伸びていれば<b>パー</b></p>
             </div>
             <div class="only-pose">
                 <div class="fbars" id="pbars"></div>
@@ -147,20 +131,12 @@ import { FilesetResolver, HandLandmarker, PoseLandmarker } from 'https://cdn.jsd
 const MODEL = 'https://storage.googleapis.com/mediapipe-models/';
 const HAND_URL = MODEL + 'hand_landmarker/hand_landmarker/float16/latest/hand_landmarker.task';
 const POSE_URL = (s) => MODEL + `pose_landmarker/pose_landmarker_${s}/float16/latest/pose_landmarker_${s}.task`;
-const HAND_NAMES = ['手首', '親指の付け根', '親指の関節（下）', '親指の関節（上）', '親指の先',
-    '人差し指の付け根', '人差し指の第2関節', '人差し指の第1関節', '人差し指の先',
-    '中指の付け根', '中指の第2関節', '中指の第1関節', '中指の先',
-    '薬指の付け根', '薬指の第2関節', '薬指の第1関節', '薬指の先',
-    '小指の付け根', '小指の第2関節', '小指の第1関節', '小指の先'];
-const POSE_NAMES = ['鼻', '左目（内側）', '左目', '左目（外側）', '右目（内側）', '右目', '右目（外側）', '左耳', '右耳', '口の左', '口の右',
-    '左肩', '右肩', '左ひじ', '右ひじ', '左手首', '右手首', '左手の小指', '右手の小指', '左手の人差し指', '右手の人差し指', '左手の親指', '右手の親指',
-    '左腰', '右腰', '左ひざ', '右ひざ', '左足首', '右足首', '左かかと', '右かかと', '左つま先', '右つま先'];
 
 const $ = (id) => document.getElementById(id);
 const view = $('view'), ctx = view.getContext('2d');
 const video = document.createElement('video'); video.playsInline = true; video.muted = true;
 let fileset = null, hand = null, pose = null, mode = 'hand', running = 'VIDEO', still = null;
-let lastTs = -1, frames = [], history = [], decided = '—', frameNo = 0, selPoint = 8;   // selPoint：黄色の丸で示す点の番号
+let lastTs = -1, frames = [], history = [], decided = '—', selPoint = 8;   // selPoint：黄色の丸で示す点の番号
 const FINGERS = ['親指', '人差し指', '中指', '薬指', '小指'], ARMS = ['左手', '右手'];
 const barRows = (names) => names.map((n) => `<div class="fb"><span>${n}</span><span class="tr"><i class="a"></i><i></i></span><em>—</em></div>`).join('');
 $('fbars').innerHTML = barRows(FINGERS); $('pbars').innerHTML = barRows(ARMS);
@@ -172,29 +148,14 @@ async function makeHand() {
     try { hand = await HandLandmarker.createFromOptions(fileset, opts('GPU')); } catch (e) { hand = await HandLandmarker.createFromOptions(fileset, opts('CPU')); }
 }
 async function makePose() {
-    const opts = (delegate) => ({ baseOptions: { modelAssetPath: POSE_URL($('size').value), delegate }, runningMode: running, ...poseOpts() });
+    const opts = (delegate) => ({ baseOptions: { modelAssetPath: POSE_URL('lite'), delegate }, runningMode: running, ...poseOpts() });
     if (pose) pose.close();
     try { pose = await PoseLandmarker.createFromOptions(fileset, opts('GPU')); } catch (e) { pose = await PoseLandmarker.createFromOptions(fileset, opts('CPU')); }
 }
 function handOpts() { return { numHands: +$('num').value }; }
 function poseOpts() { return { numPoses: +$('num').value }; }
 
-function fillPoints() {
-    const names = mode === 'hand' ? HAND_NAMES : POSE_NAMES;
-    const keep = mode === 'hand' ? 8 : 15;
-    selPoint = keep;
-    $('nums').innerHTML = names.map((n, i) => `<span data-i="${i}" title="${n}"><b>${i}</b><i>—</i></span>`).join('');
-    [...$('nums').children].forEach((el) => (el.onclick = () => { selPoint = +el.dataset.i; markPoint(); detectStill(); }));
-    $('flow').innerHTML = `1回に ${names.length}点 × 3 ＝ <b>${names.length * 3}</b> 個の数字 ・ いま <b id="frameNo">0</b> 回目`;
-    frameNo = 0; markPoint();
-}
-function markPoint() { [...$('nums').children].forEach((el) => el.classList.toggle('sel', +el.dataset.i === selPoint)); }
-// AIが出したそのままの数字（0〜1。左右反転する前の値）
-const num = (v) => (v < 0 ? '-' : '') + Math.abs(v).toFixed(2).replace(/^0/, '');
-function showNums(lm) {
-    $('frameNo').textContent = (++frameNo).toLocaleString();
-    [...$('nums').children].forEach((el, i) => { el.lastChild.textContent = lm && lm[i] ? `${num(lm[i].x)} ${num(lm[i].y)} ${num(lm[i].z)}` : '—'; });
-}
+function fillPoints() { selPoint = mode === 'hand' ? 8 : 15; }   // 手は人差し指の先、体は左の手首
 // 決まりの計算：比べる2つの長さ（高さ）を棒にする
 function showBars(id, pairs, on, scale) {
     [...$(id).children].forEach((row, k) => {
@@ -207,7 +168,6 @@ function showBars(id, pairs, on, scale) {
 async function setMode(m) {
     mode = m; document.body.className = 'mode-' + m;
     $('mHand').classList.toggle('on', m === 'hand'); $('mPose').classList.toggle('on', m === 'pose');
-    $('sizeCtrl').classList.toggle('off', m === 'hand');
     $('num').max = m === 'hand' ? 4 : 3; if (+$('num').value > +$('num').max) $('num').value = $('num').max;
     $('vNum').textContent = $('num').value;
     fillPoints(); history = []; decided = '—';
@@ -284,7 +244,6 @@ function process(result, g) {
     const list = result.landmarks || [];
     const what = mode === 'hand' ? '手' : '人';
     $('count').textContent = list.length ? `見つけた${what}：${list.length}` : `${what}は見つからない`;
-    showNums(list[0]);
     drawLandmarks(list, mode === 'hand' ? HandLandmarker.HAND_CONNECTIONS : PoseLandmarker.POSE_CONNECTIONS, g);
     updateJudge(mode === 'hand' ? judgeHand(list[0]) : judgePose(list[0]));
 }
@@ -346,10 +305,6 @@ $('num').oninput = async () => {
     $('vNum').textContent = $('num').value;
     if (hand) await hand.setOptions(handOpts()); if (pose) await pose.setOptions(poseOpts());
     detectStill();
-};
-$('size').onchange = async () => {
-    $('vSize').textContent = $('size').selectedOptions[0].textContent.replace(/（.*）/, '');
-    setStatus('体のAIを読み込み直しています…'); await makePose(); setStatus('モデルを「' + $('vSize').textContent + '」に変えました。'); detectStill();
 };
 $('stable').oninput = () => { $('vStable').textContent = $('stable').value + '回'; history = []; };
 $('showNum').onchange = () => detectStill();

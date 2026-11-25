@@ -121,7 +121,7 @@ canvas#heat { pointer-events: none; }
         <div class="pixel">
             <div class="sw" id="sw"></div>
             <div>
-                <div class="rgb"><span class="r" id="pr">R —</span><span class="g" id="pg">G —</span><span class="b" id="pb">B —</span></div>
+                <div class="rgb"><span class="r" id="pr">赤 —</span><span class="g" id="pg">緑 —</span><span class="b" id="pb">青 —</span></div>
                 <p id="pxNote">画像の上にマウスを乗せると、そのマスの色の数字が出ます（0〜255）</p>
             </div>
         </div>
@@ -138,7 +138,7 @@ canvas#heat { pointer-events: none; }
         <h2><span class="n">4</span>AIが見ている場所</h2>
         <p class="sub2">画像の一部を四角で隠して分類し直すことを、場所を変えてくり返す。隠すと答えの確率が大きく下がる所ほど赤くなる。赤い所が、AIが答えを決める手がかりにした所</p>
         <div class="ctrl">
-            <div class="seg3" id="occ"><button data-n="4">大（16回）</button><button data-n="7" class="on">中（49回）</button><button data-n="14">小（196回）</button></div></div>
+            <div class="seg3" id="occ"><button data-n="4">大</button><button data-n="7" class="on">中</button><button data-n="14">小</button></div></div>
         <div class="btns" style="margin-top:10px;"><button id="btnLook" class="primary">調べる</button><button id="btnClear" disabled>消す</button></div>
         <p class="meter" id="lookMeter"></p>
     </section>
@@ -527,7 +527,7 @@ view.addEventListener('mousemove', (e) => {
     const x = Math.floor((e.clientX - r.left) / r.width * 224), y = Math.floor((e.clientY - r.top) / r.height * 224);
     const p = vctx.getImageData(Math.min(223, x), Math.min(223, y), 1, 1).data;
     $('sw').style.background = `rgb(${p[0]},${p[1]},${p[2]})`;
-    $('pr').textContent = 'R ' + p[0]; $('pg').textContent = 'G ' + p[1]; $('pb').textContent = 'B ' + p[2];
+    $('pr').textContent = '赤 ' + p[0]; $('pg').textContent = '緑 ' + p[1]; $('pb').textContent = '青 ' + p[2];
     const n = RES[+$('res').value];
     $('pxNote').textContent = `1マス＝赤・緑・青の3つの数字（0〜255）。いま ${n}×${n}＝${(n * n).toLocaleString()} マス`;
 });

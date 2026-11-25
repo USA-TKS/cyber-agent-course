@@ -234,34 +234,6 @@ function specPNG(x, rate, cut = null, maxHz = 8000) {
     g.save(); g.translate(14, T + ph / 2); g.rotate(-Math.PI / 2); g.textBaseline = 'middle'; g.fillText('Hz', 0, 0); g.restore();
     return cv.toDataURL('image/png');
 }
-// 多くの音声認識AIが読む形：0.025秒ずつ、0.01秒ずらして、低い音〜高い音を80段（メル）に分けたマスの画像
-function melPNG(x, rate, nMels = 80) {
-    const n = Math.floor(rate * 0.025), hop = Math.floor(rate * 0.01), nfft = 512;
-    if (x.length < n) { const p = new Float32Array(n); p.set(x); x = p; }
-    const win = Float64Array.from({ length: n }, (_, i) => 0.5 - 0.5 * Math.cos(2 * Math.PI * i / (n - 1)));
-    const power = powerFrames(x, n, hop, nfft, win), frames = power.length;
-    const toMel = (f) => 2595 * Math.log10(1 + f / 700), fromMel = (m) => 700 * (10 ** (m / 2595) - 1);
-    const edges = Array.from({ length: nMels + 2 }, (_, i) => Math.floor((nfft + 1) * fromMel(toMel(rate / 2) * i / (nMels + 1)) / rate));
-    const m = power.map((p) => Array.from({ length: nMels }, (_, i) => {   // 三角形の重みで、となりの段と少し重ねて足す
-        const l = edges[i], c = edges[i + 1], r = Math.max(edges[i + 2], edges[i + 1] + 1);
-        let s = 0;
-        for (let k = l; k < c; k++) s += p[k] * (k - l) / Math.max(1, c - l);
-        for (let k = c; k < r && k < p.length; k++) s += p[k] * (r - k) / Math.max(1, r - c);
-        return Math.log10(Math.max(s, 1e-10));
-    }));
-    let hi = -Infinity;
-    m.forEach((row) => row.forEach((v) => { if (v > hi) hi = v; }));
-    let lo = Infinity;
-    m.forEach((row) => row.forEach((v, i) => { row[i] = Math.max(v, hi - 8); if (row[i] < lo) lo = row[i]; }));
-    const cv = document.createElement('canvas'); cv.width = frames * 2; cv.height = nMels * 2;
-    const g = cv.getContext('2d');
-    m.forEach((row, f) => row.forEach((v, i) => {
-        const c = cmap((v - lo) / (hi - lo + 1e-9));
-        g.fillStyle = `rgb(${c[0] | 0}, ${c[1] | 0}, ${c[2] | 0})`;
-        g.fillRect(f * 2, (nMels - 1 - i) * 2, 2, 2);   // 上が高い音
-    }));
-    return { url: cv.toDataURL('image/png'), frames };
-}
 
 // ---------- アプリの頼みごと（ノートブックの Python と同じ名前・同じ形で返す） ----------
 const OBJ_SCHEMA = {   // JSON で受け取るときの形（物の名前・数・位置）。位置は、画像の幅と高さをそれぞれ 1 としたときの [左, 上, 右, 下]
@@ -356,9 +328,8 @@ const TASKS = {
     async voice(d) {
         const x = await decodeVoice(d.audio);
         if (!x.length) throw new Error('声が録音できていません。もう一度録音してください');
-        const wav = wavBlob(SR, x), mel = melPNG(x, SR);
-        Object.assign(VOICE_STATE, { x, wav, origText: null });
-        return { seconds: x.length / SR, spec: specPNG(x, SR), rate: SR, kb: wav.size / 1024, mel: mel.url, frames: mel.frames };
+        Object.assign(VOICE_STATE, { x, wav: wavBlob(SR, x), origText: null });
+        return { seconds: x.length / SR };
     },
 
     // 実験A：ノイズを足す・測る回数を下げる

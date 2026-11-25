@@ -18,19 +18,11 @@ main { grid-template-columns: minmax(400px, 1fr) minmax(560px, 1.7fr); }
 .rates button { font-family: var(--mono); font-weight: 500; font-size: 16px; padding: 5px 12px; }
 .rates button.on { background: var(--ink); color: #fff; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
-/* AIに入る形 */
-.into { margin-top: 12px; padding: 12px 14px; border-radius: 14px; background: #fff; border: 2px solid var(--line); }
-.into h3 { font-size: 17px; font-weight: 900; margin: 2px 0 6px; }
-.into .facts { display: flex; flex-wrap: wrap; gap: 6px; }
-.into .facts span { padding: 3px 12px; border-radius: 999px; background: var(--panel); font-size: 15px; font-weight: 700; }
-.into .facts b { font-family: var(--mono); color: var(--accent-strong); }
-.into img.mel { display: block; width: 100%; height: 150px; image-rendering: pixelated; border-radius: 8px; border: 2px solid var(--line); margin-top: 4px; }
-.into p { margin-top: 6px; font-size: 14px; color: var(--muted); line-height: 1.5; }
 </style>
 </head>
 <body>
 <header>
-    <span class="tag api">体験5・API</span>
+    <span class="tag api">体験5</span>
     <h1>文字起こしの実験</h1>
     <span class="note">変える条件は1つずつ。声は OpenAI に送られます。名前や住所は話さない</span>
     <a class="back" href="./">← 戻る</a>
@@ -42,13 +34,6 @@ main { grid-template-columns: minmax(400px, 1fr) minmax(560px, 1.7fr); }
             <div class="btns"><button id="btnRec" class="primary big">● 録音を始める</button></div>
             <p class="status" id="recStatus">お題：早口言葉・茨城弁（だっぺ）・地名（霞ヶ浦）。10秒で自動で止まる</p>
             <audio id="player" controls hidden></audio>
-            <div class="into" id="into" hidden>
-                <h3>AIに送る形</h3>
-                <div class="facts"><span>WAV</span><span>1秒に <b id="iRate">16,000</b> 回</span><span><b>1</b> チャンネル</span><span><b id="iSec">0</b> 秒</span><span><b id="iKb">0</b> KB</span></div>
-                <h3 style="margin-top:12px;">AIの中では、こんなマスの画像にして読む</h3>
-                <img id="mel" class="mel" alt="AIが読む形（メルの模様）">
-                <p>0.025秒ずつ・0.01秒ずらして、低い音〜高い音を80段に分ける（たて 80 × よこ <b id="iFr">0</b> マス）。多くの音声認識のAIは、この画像から次の言葉を1つずつ予測する</p>
-            </div>
         </section>
         <section class="panel">
             <h2><span class="n">B</span>ヒントを足して文字起こし</h2>
@@ -72,7 +57,7 @@ main { grid-template-columns: minmax(400px, 1fr) minmax(560px, 1.7fr); }
             <h2><span class="n">A</span>音を変えて文字起こし</h2>
             <div class="grid2">
                 <div><div class="row">ノイズの大きさ（声の何％か）<b id="vNoise">0%</b></div><input id="noise" type="range" min="0" max="300" step="10" value="0"></div>
-                <div><div class="row">サンプリングレート<b id="vRate">16,000 Hz</b></div><div class="rates" id="rates"></div></div>
+                <div><div class="row">1秒に測る回数<b id="vRate">16,000 Hz</b></div><div class="rates" id="rates"></div></div>
             </div>
             <div class="btns" style="margin-top:16px;"><button id="btnA" class="primary" disabled>文字起こしする</button><span class="status" id="aStatus" style="margin:0;">先に録音してください</span></div>
             <div class="pair" id="pairA" hidden>
@@ -97,7 +82,7 @@ $('rates').innerHTML = RATES.map((r) => `<button data-r="${r}" class="${r === ra
 }));
 $('noise').oninput = () => { $('vNoise').textContent = $('noise').value + '%'; };
 
-// 文字起こしが少しずつ届く様子：届いたかけらを1つずつ足し、数と時間を数える
+// 文字起こしが少しずつ届く様子：届いた文字を1つずつ足す
 const pieces = {};
 function startPieces(key) {
     pieces[key] = { n: 0, t0: performance.now(), first: 0 };
@@ -115,7 +100,7 @@ function onPiece(ev) {
     if (!p.n) p.first = now;
     p.n += 1;
     const sp = document.createElement('span'); sp.className = 'pc'; sp.textContent = ev.text; el.appendChild(sp);
-    $('pc' + ev.key).innerHTML = `届いたかけら <b>${p.n}</b> 個 ・ 最初は <b>${p.first.toFixed(1)}</b> 秒後 ・ いま <b>${now.toFixed(1)}</b> 秒`;
+    $('pc' + ev.key).textContent = '';
 }
 
 function addLog(cond, text) {
@@ -149,8 +134,6 @@ async function finish() {
     $('recStatus').className = 'status'; $('recStatus').innerHTML = '<span class="thinking">声を AI に送る形にしています</span>';
     try {
         const v = await api('voice', { audio });
-        $('iRate').textContent = v.rate.toLocaleString(); $('iSec').textContent = v.seconds.toFixed(1); $('iKb').textContent = Math.round(v.kb).toLocaleString();
-        $('mel').src = v.mel; $('iFr').textContent = v.frames.toLocaleString(); $('into').hidden = false;
         $('recStatus').textContent = `${v.seconds.toFixed(1)} 秒の声を録音しました。A か B を試そう`;
         hasVoice = true; loggedOrig = false;
         $('btnA').disabled = $('btnB').disabled = false;
