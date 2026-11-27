@@ -1,4 +1,4 @@
-// 体験ページ 4・5 の共通の道具（中継のサーバへの頼み方・エラーの見立て・写真と声の下ごしらえ・カメラ・録音）
+// 体験ページ 3・5 の共通の道具（中継のサーバへの頼み方・エラーの見立て・写真と声の下ごしらえ・カメラ・録音）
 // 写真を縮める・声を整える・模様の図を描くのは、このブラウザの中でする。OpenAI へは中継のサーバ（worker/）を通して頼む。
 // APIキーは中継のサーバの中にだけあり、このページには来ない。管理者が管理用のページで Password を入れたときだけ、それを一緒に送る
 const $ = (id) => document.getElementById(id);
@@ -49,7 +49,7 @@ function explain(status, body) {
     return out(`思わぬエラー（${status}）`, '', '「くわしく」を管理者に見せる');
 }
 
-// ---------- 管理者の Password（管理用のページで入れる。このタブを閉じるまで覚え、体験 4・5 でも使う） ----------
+// ---------- 管理者の Password（管理用のページで入れる。このタブを閉じるまで覚え、体験 3・5 でも使う） ----------
 const PASS_KEY = 'image-speech-demos:admin-password';
 let passMem = '';
 function password() { try { return sessionStorage.getItem(PASS_KEY) || ''; } catch (e) { return passMem; } }

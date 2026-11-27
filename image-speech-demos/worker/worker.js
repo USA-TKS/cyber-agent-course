@@ -1,4 +1,4 @@
-// 体験ページ（image-speech-demos）の 4・5 が OpenAI の API を使うための中継。
+// 体験ページ（image-speech-demos）の 3・5 が OpenAI の API を使うための中継。
 // APIキー（OPENAI_API_KEY）と管理者の Password（ADMIN_PASSWORD）は、この Worker の秘密情報にだけ置く（ページには渡さない）。
 // 管理者は Password でいつでも使える。管理者以外は、使用開始時間から使用終了時間までの間だけ使える。
 // 使用開始時間・使用終了時間と、公開している体験ページは KV（SETTINGS）に置き、管理用のページ（admin.html）から管理者が決める。

@@ -67,7 +67,7 @@ const fmt = (iso) => { const d = new Date(iso); return `${d.getMonth() + 1}/${d.
 let current = null;
 
 // 体験ページの公開：公開前の体験は、一覧・体験ページ・スライドで「間もなく公開！」になる
-const DEMO_NAMES = { 1: '体験1 画像とピクセル・画像分類', 2: '体験2 手と体の検出', 3: '体験3 音の波形とスペクトログラム', 4: '体験4 AIで写真を読み取る', 5: '体験5 文字起こしの実験' };
+const DEMO_NAMES = { 1: '体験1 画像とピクセル・画像分類', 2: '体験2 手と体の検出', 3: '体験3 AIで写真を読み取る', 4: '体験4 音の波形とスペクトログラム', 5: '体験5 文字起こしの実験' };
 let published = [];
 function showPublished() {
     $('pubList').innerHTML = '';
@@ -114,13 +114,13 @@ async function settings(method, body) {
     if (!r.ok) throw new AppError(explain(r.status, j));
     return j;
 }
-// いまの状態：体験 4・5 を、いま使えるか（30秒ごとに見直す）
+// いまの状態：体験 3・5 を、いま使えるか（30秒ごとに見直す）
 function showNow() {
     const s = current;
     if (!s) return;
     const now = Date.now(), a = Date.parse(s.start), b = Date.parse(s.end);
     const ok = s.start && s.end && now >= a && now < b;
-    $('now').textContent = ok ? '体験4・5 を使えます' : '体験4・5 は使えません';
+    $('now').textContent = ok ? '体験3・5 を使えます' : '体験3・5 は使えません';
     $('now').className = 'now ' + (ok ? 'ok' : 'ng');
     $('nowSub').className = 'status';
     $('nowSub').textContent = !s.start || !s.end ? '使用開始時間と使用終了時間がまだ決まっていません'
