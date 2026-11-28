@@ -1987,7 +1987,8 @@ class SlidePresentation {
         s.classList.remove('leaving');
         s.classList.add('active');
         void s.offsetWidth; // reflow して登場アニメーションを毎回やり直す
-        requestAnimationFrame(() => requestAnimationFrame(() => s.classList.add('visible')));
+        // 速く続けて送ると、このフレームを待つ間に次のスライドへ移っていることがある。そのときは付けない（前のスライドが残って重なるため）
+        requestAnimationFrame(() => requestAnimationFrame(() => { if (this.slides[this.current] === s) s.classList.add('visible'); }));
 
         this.current = i;
         this.stage.dataset.slide = String(i + 1);
